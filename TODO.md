@@ -2,11 +2,11 @@
 
 ## Mobile App (apps/mobile)
 
-- [ ] Initialize Expo project in `apps/mobile/`
-- [ ] Set up Supabase auth with AsyncStorage
-- [ ] Build chat thread screen (send/receive, streaming)
-- [ ] Build agent selection / new chat screen
-- [ ] Build session list (drawer navigation)
+- [x] Initialize Expo project in `apps/mobile/`
+- [x] Set up Supabase auth with AsyncStorage
+- [x] Build chat thread screen (send/receive, streaming)
+- [x] Build agent selection / new chat screen
+- [x] Build session list (drawer navigation)
 - [ ] File attachments in chat
 - [ ] Session files panel + download
 - [ ] Deep link handling for auth callback
