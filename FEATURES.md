@@ -13,19 +13,19 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Login (magic link / OAuth) | ✅ | ❌ | Supabase auth |
-| Auth callback handling | ✅ | ❌ | Deep link on mobile |
-| Sign out | ✅ | ❌ | |
+| Login (magic link / OAuth) | ✅ | ⏳ | Supabase auth |
+| Auth callback handling | ✅ | ⏳ | Deep link on mobile |
+| Sign out | ✅ | ⏳ | |
 
 ## Chat
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Start new chat (agent selection) | ✅ | ❌ | |
-| Chat thread (send/receive messages) | ✅ | ❌ | |
-| Streaming responses | ✅ | ❌ | SSE via ai-sdk |
+| Start new chat (agent selection) | ✅ | ⏳ | |
+| Chat thread (send/receive messages) | ✅ | ⏳ | |
+| Streaming responses | ✅ | ⏳ | SSE via ai-sdk |
 | Markdown rendering | ✅ | ❌ | |
-| Tool call display | ✅ | ❌ | |
+| Tool call display | ✅ | ⏳ | |
 | Polling for async responses | ✅ | ❌ | |
 
 ## Files
@@ -41,9 +41,9 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Session sidebar | ✅ | ❌ | Drawer on mobile |
-| Session grouping (today/yesterday/older) | ✅ | ❌ | |
-| Delete session (context menu) | ✅ | ❌ | Long-press on mobile |
+| Session sidebar | ✅ | ⏳ | Drawer on mobile |
+| Session grouping (today/yesterday/older) | ✅ | ⏳ | |
+| Delete session (context menu) | ✅ | ⏳ | Long-press on mobile |
 | Marketplace page | ✅ | ❌ | |
 
 ## API Routes (backend proxy)
