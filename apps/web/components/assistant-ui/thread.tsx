@@ -30,7 +30,8 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
-import { type FC, useRef, useState } from "react";
+import { type FC, forwardRef, useLayoutEffect, useRef, useState } from "react";
+import { useComposedRefs } from "@radix-ui/react-compose-refs";
 
 export const Thread: FC = () => {
   return (
@@ -156,6 +157,46 @@ const AttachmentChip: FC<{ att: PendingAttachment; onRemove: () => void }> = ({
 };
 
 // ---------------------------------------------------------------------------
+// IME-safe textarea — uncontrolled internally so React never resets the DOM
+// value during CJK / IME composition.
+// ---------------------------------------------------------------------------
+
+const IMESafeTextarea = forwardRef<
+  HTMLTextAreaElement,
+  React.ComponentPropsWithoutRef<"textarea"> & { value?: string }
+>(({ value, defaultValue, onCompositionStart, onCompositionEnd, ...rest }, fwdRef) => {
+  const localRef = useRef<HTMLTextAreaElement>(null);
+  const ref = useComposedRefs(fwdRef, localRef);
+  const composingRef = useRef(false);
+
+  useLayoutEffect(() => {
+    const el = localRef.current;
+    if (!el || composingRef.current) return;
+    const next = String(value ?? "");
+    if (el.value !== next) {
+      el.value = next;
+    }
+  });
+
+  return (
+    <textarea
+      {...rest}
+      ref={ref}
+      defaultValue={String(value ?? defaultValue ?? "")}
+      onCompositionStart={(e) => {
+        composingRef.current = true;
+        (onCompositionStart as React.CompositionEventHandler<HTMLTextAreaElement>)?.(e);
+      }}
+      onCompositionEnd={(e) => {
+        composingRef.current = false;
+        (onCompositionEnd as React.CompositionEventHandler<HTMLTextAreaElement>)?.(e);
+      }}
+    />
+  );
+});
+IMESafeTextarea.displayName = "IMESafeTextarea";
+
+// ---------------------------------------------------------------------------
 // Composer with attachment support
 // ---------------------------------------------------------------------------
 
@@ -209,12 +250,16 @@ const Composer: FC = () => {
           </div>
         )}
         <ComposerPrimitive.Input
-          placeholder="Send a message..."
-          className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
-          rows={1}
+          asChild
           autoFocus
           aria-label="Message input"
-        />
+        >
+          <IMESafeTextarea
+            placeholder="Send a message..."
+            className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80 [field-sizing:content]"
+            rows={1}
+          />
+        </ComposerPrimitive.Input>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <input
@@ -498,7 +543,9 @@ const UserActionBar: FC = () => {
 const EditComposer: FC = () => {
   return (
     <ComposerPrimitive.Root className="aui-edit-composer-root flex w-full flex-col gap-2 rounded-2xl border bg-background p-3">
-      <ComposerPrimitive.Input className="aui-edit-composer-input w-full resize-none bg-transparent text-sm outline-none" />
+      <ComposerPrimitive.Input asChild>
+        <IMESafeTextarea className="aui-edit-composer-input w-full resize-none bg-transparent text-sm outline-none [field-sizing:content]" />
+      </ComposerPrimitive.Input>
       <div className="flex justify-end gap-2">
         <ComposerPrimitive.Cancel asChild>
           <Button variant="ghost" size="sm">
