@@ -21,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: ["expo-router"],
   extra: {
     SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
     BACKEND_URL: process.env.BACKEND_URL,
     eas: { projectId: process.env.EAS_PROJECT_ID },
   },
