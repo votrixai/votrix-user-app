@@ -16,7 +16,7 @@ packages/
 
 ```bash
 npm install          # install all workspace dependencies
-npm run dev:web      # start the web app dev server
+npm run web          # start the web app dev server
 npm run build:web    # production build for web
 ```
 
