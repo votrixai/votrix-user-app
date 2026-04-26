@@ -7,6 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: "1.0.0",
   scheme: "votrix",
   orientation: "portrait",
+  icon: "./assets/icon.png",
   userInterfaceStyle: "automatic",
   ios: {
     supportsTablet: true,
@@ -17,6 +18,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.votrix.app",
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#FFFFFF",
+    },
   },
   plugins: ["expo-router"],
   extra: {
