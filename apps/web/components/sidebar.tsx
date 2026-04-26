@@ -10,7 +10,6 @@ import type { SessionResponse } from "@votrix/shared";
 type Props = {
   email: string;
   userId: string;
-  sessions: SessionResponse[];
 };
 
 type Group = { label: string; sessions: SessionResponse[] };
@@ -36,13 +35,23 @@ function groupSessions(sessions: SessionResponse[]): Group[] {
     .map(([label, arr]) => ({ label, sessions: arr }));
 }
 
-export default function Sidebar({ email, userId, sessions }: Props) {
+export default function Sidebar({ email, userId }: Props) {
   const router = useRouter();
   const params = useParams<{ sessionId?: string }>();
   const pathname = usePathname();
   const activeId = params?.sessionId;
   const marketplaceActive = pathname === "/marketplace";
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+
+  useEffect(() => {
+    fetch("/api/sessions")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setSessions(data))
+      .catch(() => {})
+      .finally(() => setLoadingSessions(false));
+  }, []);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(
     null,
   );
@@ -102,7 +111,7 @@ export default function Sidebar({ email, userId, sessions }: Props) {
     setDeleting((prev) => new Set(prev).add(id));
     try {
       await fetch(`/api/sessions/${id}`, { method: "DELETE" });
-      router.refresh();
+      setSessions((prev) => prev.filter((s) => s.id !== id));
     } finally {
       setDeleting((prev) => {
         const next = new Set(prev);
@@ -136,7 +145,13 @@ export default function Sidebar({ email, userId, sessions }: Props) {
 
       {/* Session list */}
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
-        {groups.length === 0 && (
+        {loadingSessions && (
+          <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
+            <Loader2 className="size-3 animate-spin" />
+            Loading chats...
+          </div>
+        )}
+        {!loadingSessions && groups.length === 0 && (
           <p className="px-2 text-xs text-muted-foreground">No chats yet</p>
         )}
         {groups.map((g) => (
