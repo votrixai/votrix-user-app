@@ -1,5 +1,6 @@
 import type { ChatModelAdapter } from "@assistant-ui/react-native";
 import type { ChatSSEEvent } from "@votrix/shared";
+import type { ReadonlyJSONObject } from "assistant-stream/utils";
 import { backendFetch } from "./api";
 
 export function createBackendChatAdapter(
@@ -32,6 +33,7 @@ export function createBackendChatAdapter(
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
+      let toolCallSeq = 0;
 
       try {
         while (true) {
@@ -59,19 +61,29 @@ export function createBackendChatAdapter(
                 };
                 break;
 
-              case "tool_start":
+              case "tool_start": {
+                const input = event.input ?? {};
+                const argsText = JSON.stringify(input);
+                const args = JSON.parse(argsText) as ReadonlyJSONObject;
+                const ext = event as typeof event & { tool_call_id?: string };
+                const toolCallId =
+                  typeof ext.tool_call_id === "string" && ext.tool_call_id
+                    ? ext.tool_call_id
+                    : `${event.name}-${++toolCallSeq}`;
                 yield {
                   content: [
                     { type: "text" as const, text: fullText },
                     {
                       type: "tool-call" as const,
-                      toolCallId: (event as any).tool_call_id ?? event.name,
+                      toolCallId,
                       toolName: event.name,
-                      args: event.input,
+                      args,
+                      argsText,
                     },
                   ],
                 };
                 break;
+              }
 
               case "tool_end":
                 break;
