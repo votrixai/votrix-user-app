@@ -1,5 +1,12 @@
 import type { ExpoConfig, ConfigContext } from "expo/config";
 
+const backendUrl = process.env.BACKEND_URL ?? "";
+const usesLocalHttpBackend =
+  backendUrl.startsWith("http://") &&
+  /\/\/(localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(
+    backendUrl,
+  );
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Votrix",
@@ -14,6 +21,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "com.votrix.app",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      NSLocalNetworkUsageDescription:
+        "Votrix connects to a local development backend on your network.",
+      NSAppTransportSecurity: {
+        NSAllowsArbitraryLoads: usesLocalHttpBackend,
+        NSAllowsLocalNetworking: true,
+      },
     },
   },
   android: {
