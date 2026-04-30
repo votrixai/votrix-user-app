@@ -4,6 +4,7 @@ import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAttachments, type PendingAttachment } from "@/lib/attachment-context";
+import { useToast } from "@/lib/toast-context";
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -93,7 +94,7 @@ const ThreadWelcome: FC = () => {
     <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
         <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
-          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
+          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-light tracking-tight text-2xl duration-200">
             Hello there!
           </h1>
           <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
@@ -122,7 +123,7 @@ const ThreadSuggestionItem: FC = () => {
       <SuggestionPrimitive.Trigger send asChild>
         <Button
           variant="ghost"
-          className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-3xl border bg-background px-4 py-3 text-left text-sm transition-colors hover:bg-muted"
+          className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-lg border bg-background px-4 py-3 text-left text-sm shadow-ambient transition-colors hover:shadow-standard"
         >
           <SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1 font-medium" />
           <SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 text-muted-foreground empty:hidden" />
@@ -202,6 +203,7 @@ IMESafeTextarea.displayName = "IMESafeTextarea";
 
 const Composer: FC = () => {
   const { attachments, addAttachment, removeAttachment, clearAttachmentsUI } = useAttachments();
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -215,15 +217,18 @@ const Composer: FC = () => {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/files", { method: "POST", body: form });
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      if (!res.ok) {
+        toast("File upload failed. Please try again.");
+        return;
+      }
       const data = await res.json();
       addAttachment({
         file_id: data.file_id,
         filename: data.filename,
         content_type: file.type.startsWith("image/") ? "image" : "document",
       });
-    } catch (err) {
-      console.error("File upload failed:", err);
+    } catch {
+      toast("File upload failed. Check your connection.");
     } finally {
       setUploading(false);
     }
@@ -366,11 +371,11 @@ const UserAttachmentChip: FC<{ attachment: any }> = ({ attachment }) => {
   const subtitle = isImage ? "Image" : fileSubtitle(filename, contentType);
 
   return (
-    <div className="flex max-w-[18rem] items-center gap-3 rounded-2xl border border-border bg-background px-3 py-2.5 shadow-sm">
+    <div className="flex max-w-[18rem] items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 shadow-ambient">
       <div
-        className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-          isImage ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
-                  : "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+        className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
+          isImage ? "bg-primary/10 text-primary"
+                  : "bg-primary/10 text-primary"
         }`}
       >
         <FileIconSmall isImage={isImage} />
@@ -504,7 +509,7 @@ const UserMessage: FC = () => {
     >
       <div className="aui-user-message-content-wrapper relative col-start-2 flex min-w-0 flex-col items-end gap-1.5">
         <AuiIf condition={(s) => !s.composer.isEditing}>
-          <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden">
+          <div className="aui-user-message-content wrap-break-word peer rounded-lg bg-muted px-4 py-2.5 text-foreground empty:hidden">
             <MessagePrimitive.Parts />
           </div>
           <MessagePrimitive.Attachments>
@@ -542,7 +547,7 @@ const UserActionBar: FC = () => {
 
 const EditComposer: FC = () => {
   return (
-    <ComposerPrimitive.Root className="aui-edit-composer-root flex w-full flex-col gap-2 rounded-2xl border bg-background p-3">
+    <ComposerPrimitive.Root className="aui-edit-composer-root flex w-full flex-col gap-2 rounded-lg border bg-background p-3">
       <ComposerPrimitive.Input asChild>
         <IMESafeTextarea className="aui-edit-composer-input w-full resize-none bg-transparent text-sm outline-none [field-sizing:content]" />
       </ComposerPrimitive.Input>

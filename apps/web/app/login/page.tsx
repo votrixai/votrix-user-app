@@ -61,7 +61,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="text-2xl font-light tracking-tight text-foreground">
             Welcome to Votrix
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -74,7 +74,7 @@ export default function LoginPage() {
           <button
             onClick={() => handleOAuth("google")}
             disabled={loading !== null}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-3 rounded-md border border-border bg-background px-4 py-2.5 text-sm text-foreground shadow-ambient transition-colors hover:bg-muted disabled:opacity-50"
           >
             <GoogleIcon />
             {loading === "google" ? "Redirecting..." : "Continue with Google"}
@@ -83,7 +83,7 @@ export default function LoginPage() {
           <button
             onClick={() => handleOAuth("facebook")}
             disabled={loading !== null}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-3 rounded-md border border-border bg-background px-4 py-2.5 text-sm text-foreground shadow-ambient transition-colors hover:bg-muted disabled:opacity-50"
           >
             <FacebookIcon />
             {loading === "facebook"
@@ -95,7 +95,7 @@ export default function LoginPage() {
             <button
               onClick={() => handleOAuth("apple")}
               disabled={loading !== null}
-              className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-3 rounded-md border border-border bg-background px-4 py-2.5 text-sm text-foreground shadow-ambient transition-colors hover:bg-muted disabled:opacity-50"
             >
               <AppleIcon />
               {loading === "apple" ? "Redirecting..." : "Continue with Apple"}
@@ -123,12 +123,12 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             required
-            className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring focus:ring-2 focus:ring-ring/20"
+            className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <button
             type="submit"
             disabled={loading !== null}
-            className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="w-full rounded-md bg-primary px-4 py-2.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading === "magic-link"
               ? "Sending..."
@@ -141,7 +141,7 @@ export default function LoginPage() {
           <p
             className={`text-center text-sm ${
               message.includes("Check your email")
-                ? "text-green-600 dark:text-green-400"
+                ? "text-[#108c3d]"
                 : "text-destructive"
             }`}
           >
