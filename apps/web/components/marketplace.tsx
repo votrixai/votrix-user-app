@@ -51,7 +51,7 @@ export default function Marketplace({
         body: JSON.stringify({ agent_slug: blueprint.slug }),
       });
       if (!sessionRes.ok) {
-        toast("Hired successfully, but could not start chat. Try from the sidebar.");
+        toast("Hired successfully, but could not start chat. Select them to start chatting.");
         setSelected(null);
         setHiredIds((prev) => new Set(prev).add(blueprint.id));
         router.refresh();
@@ -102,14 +102,15 @@ export default function Marketplace({
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {blueprints.map((bp) => {
+            {blueprints.map((bp, i) => {
               const isHired = hiredIds.has(bp.id);
               const isSelected = selected === bp.slug && hiring;
 
               return (
                 <div
                   key={bp.id}
-                  className="flex flex-col items-start gap-3 rounded-md border border-border bg-background p-5 shadow-ambient transition-colors"
+                  className="animate-stagger-in flex flex-col items-start gap-3 rounded-md border border-border bg-background p-5 shadow-ambient transition-colors"
+                  style={{ "--stagger-index": i } as React.CSSProperties}
                 >
                   <div className="flex w-full items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-md bg-muted">

@@ -122,10 +122,11 @@ export default function FilesWorkspace({
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {filtered.map((f) => (
+            {filtered.map((f, i) => (
               <li
                 key={f.file_id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
+                className="animate-stagger-in flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
+                style={{ "--stagger-index": i } as React.CSSProperties}
               >
                 <FileIcon className="size-5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
@@ -163,13 +164,13 @@ export default function FilesWorkspace({
 
       {confirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={() => setConfirm(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-sm rounded-md border border-border bg-background p-5 shadow-deep"
+            className="w-full max-w-sm animate-in fade-in zoom-in-[0.96] rounded-md border border-border bg-background p-5 shadow-deep duration-[120ms]"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-light">Delete file?</h2>

@@ -39,6 +39,8 @@ export async function POST(request: Request) {
       let textPartId = generateId();
       let textStarted = false;
       let textEnded = false;
+      let reasoningPartId = generateId();
+      let reasoningStarted = false;
       let clientDisconnected = request.signal.aborted;
       // backend tool_call_id → frontend toolCallId (1:1, may differ in format)
       const toolCallIds = new Map<string, string>();
@@ -67,8 +69,17 @@ export async function POST(request: Request) {
         }
       };
 
+      const endReasoning = () => {
+        if (reasoningStarted) {
+          safeWrite({ type: "reasoning-end", id: reasoningPartId });
+          reasoningStarted = false;
+          reasoningPartId = generateId();
+        }
+      };
+
       const resetText = () => {
         endText();
+        endReasoning();
         textPartId = generateId();
         textStarted = false;
         textEnded = false;
@@ -112,7 +123,31 @@ export async function POST(request: Request) {
             const data = JSON.parse(line.slice(6));
 
             switch (data.type) {
+              case "thinking":
+              case "reasoning": {
+                endText();
+                if (!reasoningStarted) {
+                  safeWrite({ type: "reasoning-start", id: reasoningPartId });
+                  reasoningStarted = true;
+                }
+                if (data.content) {
+                  safeWrite({
+                    type: "reasoning-delta",
+                    id: reasoningPartId,
+                    delta: data.content,
+                  });
+                }
+                break;
+              }
+
+              case "thinking_end":
+              case "reasoning_end": {
+                endReasoning();
+                break;
+              }
+
               case "token": {
+                endReasoning();
                 if (!textStarted) {
                   safeWrite({ type: "text-start", id: textPartId });
                   textStarted = true;
@@ -197,6 +232,7 @@ export async function POST(request: Request) {
         }
       } finally {
         try {
+          endReasoning();
           endText();
         } catch {
           // Writer may already be closed
