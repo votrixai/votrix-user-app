@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircleIcon,
   CheckIcon,
@@ -18,6 +18,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useElapsedTimer } from "@/lib/use-elapsed-timer";
 import { cn } from "@/lib/utils";
 
 const ANIMATION_DURATION = 200;
@@ -90,14 +91,23 @@ const statusIconMap: Record<ToolStatus, React.ElementType> = {
   "requires-action": AlertCircleIcon,
 };
 
+const statusColorMap: Record<ToolStatus, string> = {
+  running: "text-primary",
+  complete: "text-emerald-600",
+  incomplete: "text-destructive",
+  "requires-action": "text-amber-600",
+};
+
 function ToolFallbackTrigger({
   toolName,
   status,
+  elapsed,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   toolName: string;
   status?: ToolCallMessagePartStatus;
+  elapsed?: string | null;
 }) {
   const statusType = status?.type ?? "complete";
   const isRunning = statusType === "running";
@@ -105,7 +115,6 @@ function ToolFallbackTrigger({
     status?.type === "incomplete" && status.reason === "cancelled";
 
   const Icon = statusIconMap[statusType];
-  const label = isCancelled ? "Cancelled tool" : "Used tool";
 
   return (
     <CollapsibleTrigger
@@ -120,8 +129,8 @@ function ToolFallbackTrigger({
         data-slot="tool-fallback-trigger-icon"
         className={cn(
           "aui-tool-fallback-trigger-icon size-4 shrink-0",
-          isCancelled && "text-muted-foreground",
           isRunning && "animate-spin",
+          isCancelled ? "text-muted-foreground" : statusColorMap[statusType],
         )}
       />
       <span
@@ -131,9 +140,24 @@ function ToolFallbackTrigger({
           isCancelled && "text-muted-foreground line-through",
         )}
       >
-        <span>
-          {label}: <b>{toolName}</b>
-        </span>
+        {isRunning ? (
+          <span className="animate-shimmer-text">
+            Running <b>{toolName}</b>...
+          </span>
+        ) : isCancelled ? (
+          <span>
+            Cancelled <b>{toolName}</b>
+          </span>
+        ) : (
+          <span>
+            Used <b>{toolName}</b>
+            {elapsed && (
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                ({elapsed})
+              </span>
+            )}
+          </span>
+        )}
       </span>
       <ChevronDownIcon
         data-slot="tool-fallback-trigger-chevron"
@@ -221,14 +245,37 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   result,
   status,
 }) => {
+  const isRunning = status?.type === "running";
   const isCancelled =
     status?.type === "incomplete" && status.reason === "cancelled";
 
+  const elapsed = useElapsedTimer(isRunning);
+
+  const [open, setOpen] = useState(isRunning);
+  const userToggled = useRef(false);
+
+  useEffect(() => {
+    if (userToggled.current) return;
+    if (isRunning) {
+      setOpen(true);
+    } else {
+      const timer = setTimeout(() => setOpen(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isRunning]);
+
+  const handleOpenChange = useCallback((next: boolean) => {
+    userToggled.current = true;
+    setOpen(next);
+  }, []);
+
   return (
     <ToolFallbackRoot
+      open={open}
+      onOpenChange={handleOpenChange}
       className={cn(isCancelled && "border-muted-foreground/30 bg-muted/30")}
     >
-      <ToolFallbackTrigger toolName={toolName} status={status} />
+      <ToolFallbackTrigger toolName={toolName} status={status} elapsed={elapsed} />
       <ToolFallbackContent>
         <ToolFallbackArgs
           argsText={argsText}

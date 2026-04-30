@@ -33,11 +33,12 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Start new chat (employee selection) | ✅ | ⏳ | From sidebar [+] or home page |
+| Start new chat (employee selection) | ✅ | ⏳ | From session panel or home page |
 | Chat thread (send/receive messages) | ✅ | ⏳ | |
-| Streaming responses | ✅ | ⏳ | SSE via ai-sdk |
+| Streaming responses | ✅ | ⏳ | SSE via ai-sdk, smooth text streaming |
 | Markdown rendering | ✅ | ❌ | |
-| Tool call display | ✅ | ⏳ | |
+| Tool call display (rich) | ✅ | ❌ | Auto-expand, timer, status colors, shimmer |
+| Reasoning/thinking blocks | ✅ | ❌ | Collapsible, auto-expand while streaming |
 | Polling for async responses | ✅ | ❌ | |
 
 ## Files
@@ -53,12 +54,14 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Sidebar with employee groups | ✅ | ❌ | WhatsApp-style collapsible groups |
-| Chat grouping by employee | ✅ | ❌ | Replaces time-based grouping |
+| 3-column layout (rail + sessions + chat) | ✅ | ❌ | Employee rail (180px) + session panel (240px) + chat |
+| Employee rail | ✅ | ❌ | Compact list with info icon hover-reveal |
+| Session panel | ✅ | ❌ | Collapsible, auto-selects from URL |
 | Delete session (context menu + hover icon) | ✅ | ⏳ | Long-press on mobile |
 | Files link in sidebar | ✅ | ❌ | |
 | Marketplace page | ✅ | ❌ | |
 | Home page (employee-first) | ✅ | ❌ | Shows employees or marketplace CTA |
+| Command palette (Cmd+K) | ✅ | ❌ | Search sessions, employees, pages |
 
 ## API Routes (backend proxy)
 
@@ -84,3 +87,21 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 | Error page (error.tsx) | ✅ | ❌ | Branded with retry action |
 | Not-found page (not-found.tsx) | ✅ | ❌ | Branded 404 |
 | Mutation error feedback | ✅ | ❌ | Toasts on delete, create, upload failures |
+
+## UX Polish
+
+| Feature | Web | Mobile | Notes |
+|---------|-----|--------|-------|
+| Message entrance animations | ✅ | ❌ | Stagger fade-in slide-up |
+| Thinking indicator (pulse dots + elapsed) | ✅ | ❌ | Shows elapsed time after 2.1s |
+| Scroll-to-bottom button | ✅ | ❌ | Bottom-right, backdrop-blur, slide transition |
+| Hover-reveal action bars | ✅ | ❌ | Copy/edit/reload appear on message hover |
+| Welcome state personalization | ✅ | ❌ | Shows employee name and icon |
+| Suggestion chips | ✅ | ❌ | Pill-style chips in welcome state |
+| Modal backdrop blur | ✅ | ❌ | backdrop-blur-sm on all dialogs |
+| Dialog entrance animation | ✅ | ❌ | fade-in + zoom-in on open |
+| Employee panel slide animation | ✅ | ❌ | AnimatePresence slide-in/out |
+| Custom scrollbars | ✅ | ❌ | Thin, rounded, themed colors |
+| Staggered list animations | ✅ | ❌ | Sidebar, marketplace, files, landing |
+| Reduced motion support | ✅ | ❌ | Respects prefers-reduced-motion |
+| Composer focus ring (DESIGN.md) | ✅ | ❌ | Indigo border + shadow ring |
