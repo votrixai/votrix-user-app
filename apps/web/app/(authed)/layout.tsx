@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import Sidebar from "@/components/sidebar";
+import { AuthedShell } from "@/components/authed-shell";
 
 export default async function AuthedLayout({
   children,
@@ -12,9 +12,8 @@ export default async function AuthedLayout({
   } = await supabase.auth.getUser();
 
   return (
-    <div className="flex h-dvh">
-      <Sidebar email={user?.email ?? ""} userId={user?.id ?? ""} />
-      <div className="flex-1 overflow-hidden">{children}</div>
-    </div>
+    <AuthedShell email={user?.email ?? ""} userId={user?.id ?? ""}>
+      {children}
+    </AuthedShell>
   );
 }

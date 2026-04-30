@@ -1,13 +1,13 @@
 import { backendFetch } from "@/lib/backend";
-import type { AgentConfig } from "@votrix/shared";
+import type { AgentEmployeeResponse } from "@votrix/shared";
 import NewChatLanding from "@/components/new-chat-landing";
 
 export default async function Home() {
-  let agents: AgentConfig[] = [];
+  let employees: AgentEmployeeResponse[] = [];
   try {
-    const res = await backendFetch("/agents");
-    if (res.ok) agents = (await res.json()) as AgentConfig[];
+    const res = await backendFetch("/employees");
+    if (res.ok) employees = (await res.json()) as AgentEmployeeResponse[];
   } catch {}
 
-  return <NewChatLanding agents={agents} />;
+  return <NewChatLanding employees={employees} />;
 }

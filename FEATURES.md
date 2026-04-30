@@ -17,11 +17,23 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 | Auth callback handling | ✅ | ⏳ | Deep link on mobile |
 | Sign out | ✅ | ⏳ | |
 
+## Agents & Employees
+
+| Feature | Web | Mobile | Notes |
+|---------|-----|--------|-------|
+| Marketplace (browse blueprints) | ✅ | ❌ | Shows hire/hired state |
+| Hire agent from marketplace | ✅ | ❌ | Post-hire starts first chat |
+| Employee list in sidebar | ✅ | ❌ | Collapsible groups with nested chats |
+| Employee detail panel | ✅ | ❌ | Slide-over with memory stores |
+| View memory stores | ✅ | ❌ | Expandable in detail panel |
+| View memories | ✅ | ❌ | Lazy-loaded per store |
+| Remove employee from team | ✅ | ❌ | With confirmation dialog |
+
 ## Chat
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Start new chat (agent selection) | ✅ | ⏳ | |
+| Start new chat (employee selection) | ✅ | ⏳ | From sidebar [+] or home page |
 | Chat thread (send/receive messages) | ✅ | ⏳ | |
 | Streaming responses | ✅ | ⏳ | SSE via ai-sdk |
 | Markdown rendering | ✅ | ❌ | |
@@ -41,10 +53,11 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Session sidebar | ✅ | ⏳ | Drawer on mobile |
-| Session grouping (today/yesterday/older) | ✅ | ⏳ | |
+| Sidebar with employee groups | ✅ | ❌ | WhatsApp-style collapsible groups |
+| Chat grouping by employee | ✅ | ❌ | Replaces time-based grouping |
 | Delete session (context menu) | ✅ | ⏳ | Long-press on mobile |
 | Marketplace page | ✅ | ❌ | |
+| Home page (employee-first) | ✅ | ❌ | Shows employees or marketplace CTA |
 
 ## API Routes (backend proxy)
 
@@ -53,5 +66,11 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 | POST /api/chat | ✅ | ❌ | Mobile hits backend directly |
 | GET/POST /api/sessions | ✅ | ❌ | |
 | GET/DELETE /api/sessions/:id | ✅ | ❌ | |
+| GET /api/employees | ✅ | ❌ | |
+| POST /api/employees/hire | ✅ | ❌ | |
+| DELETE /api/employees/:id | ✅ | ❌ | |
+| GET /api/employees/:id/memory-stores | ✅ | ❌ | |
+| GET /api/employees/:id/memory-stores/:id/memories | ✅ | ❌ | |
+| GET /api/blueprints | ✅ | ❌ | |
 | GET/POST /api/files | ✅ | ❌ | |
 | GET /api/files/:id/content | ✅ | ❌ | |

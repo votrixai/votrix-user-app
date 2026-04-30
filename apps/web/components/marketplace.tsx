@@ -2,31 +2,74 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bot } from "lucide-react";
-import type { AgentConfig } from "@votrix/shared";
+import { Bot, Check, Loader2 } from "lucide-react";
+import type { AgentBlueprintResponse } from "@votrix/shared";
 
-export default function Marketplace({ agents }: { agents: AgentConfig[] }) {
+export default function Marketplace({
+  blueprints,
+}: {
+  blueprints: AgentBlueprintResponse[];
+}) {
   const router = useRouter();
-  const [creating, startCreating] = useTransition();
+  const [hiring, startHiring] = useTransition();
   const [selected, setSelected] = useState<string | null>(null);
+  const [hiredIds, setHiredIds] = useState<Set<string>>(
+    new Set(blueprints.filter((b) => b.is_hired).map((b) => b.id)),
+  );
 
-  const start = (slug: string) => {
-    setSelected(slug);
-    startCreating(async () => {
-      const res = await fetch("/api/sessions", {
+  const hire = (blueprint: AgentBlueprintResponse) => {
+    setSelected(blueprint.slug);
+    startHiring(async () => {
+      // Step 1: Hire the employee
+      const hireRes = await fetch("/api/employees/hire", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_slug: slug }),
+        body: JSON.stringify({ agent_slug: blueprint.slug }),
       });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "");
-        console.error("create session failed", res.status, msg);
-        alert(`Couldn't create chat (${res.status}): ${msg || "unknown error"}`);
+      if (!hireRes.ok) {
+        const msg = await hireRes.text().catch(() => "");
+        console.error("hire failed", hireRes.status, msg);
+        alert(
+          `Couldn't hire agent (${hireRes.status}): ${msg || "unknown error"}`,
+        );
         setSelected(null);
         return;
       }
-      const data = await res.json();
-      router.push(`/c/${data.id}`);
+
+      // Step 2: Create first chat session
+      const sessionRes = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_slug: blueprint.slug }),
+      });
+      if (!sessionRes.ok) {
+        setSelected(null);
+        setHiredIds((prev) => new Set(prev).add(blueprint.id));
+        router.refresh();
+        return;
+      }
+      const session = await sessionRes.json();
+      setSelected(null);
+      router.push(`/c/${session.id}`);
+      router.refresh();
+    });
+  };
+
+  const startChat = (blueprint: AgentBlueprintResponse) => {
+    setSelected(blueprint.slug);
+    startHiring(async () => {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_slug: blueprint.slug }),
+      });
+      if (!res.ok) {
+        setSelected(null);
+        return;
+      }
+      const session = await res.json();
+      setSelected(null);
+      router.push(`/c/${session.id}`);
       router.refresh();
     });
   };
@@ -36,46 +79,84 @@ export default function Marketplace({ agents }: { agents: AgentConfig[] }) {
       <div className="mx-auto max-w-3xl">
         <h1 className="mb-2 text-2xl font-semibold">Marketplace</h1>
         <p className="mb-8 text-sm text-muted-foreground">
-          Browse available agents and start a conversation.
+          Hire AI employees for your team.
         </p>
-        {agents.length === 0 ? (
+        {blueprints.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No agents available.
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {agents.map((a) => (
-              <button
-                key={a.slug}
-                onClick={() => start(a.slug)}
-                disabled={creating}
-                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-background p-5 text-left transition-colors hover:bg-muted disabled:opacity-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-md bg-muted">
-                    <Bot className="size-5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium">{a.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {selected === a.slug && creating ? "Creating…" : a.model}
+            {blueprints.map((bp) => {
+              const isHired = hiredIds.has(bp.id);
+              const isSelected = selected === bp.slug && hiring;
+
+              return (
+                <div
+                  key={bp.id}
+                  className="flex flex-col items-start gap-3 rounded-lg border border-border bg-background p-5 transition-colors"
+                >
+                  <div className="flex w-full items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-md bg-muted">
+                      <Bot className="size-5 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{bp.display_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {bp.model}
+                      </div>
                     </div>
                   </div>
-                </div>
-                {a.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {a.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+
+                  {bp.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {bp.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-auto w-full pt-1">
+                    {isHired ? (
+                      <div className="flex gap-2">
+                        <span className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground">
+                          <Check className="size-3.5" />
+                          Hired
+                        </span>
+                        <button
+                          onClick={() => startChat(bp)}
+                          disabled={hiring}
+                          className="flex-1 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                        >
+                          {isSelected ? (
+                            <Loader2 className="mx-auto size-4 animate-spin" />
+                          ) : (
+                            "Chat"
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => hire(bp)}
+                        disabled={hiring}
+                        className="w-full rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
                       >
-                        {skill}
-                      </span>
-                    ))}
+                        {isSelected ? (
+                          <Loader2 className="mx-auto size-4 animate-spin" />
+                        ) : (
+                          "Hire"
+                        )}
+                      </button>
+                    )}
                   </div>
-                )}
-              </button>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

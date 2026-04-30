@@ -1,13 +1,13 @@
 import { backendFetch } from "@/lib/backend";
-import type { AgentConfig } from "@votrix/shared";
+import type { AgentBlueprintResponse } from "@votrix/shared";
 import Marketplace from "@/components/marketplace";
 
 export default async function MarketplacePage() {
-  let agents: AgentConfig[] = [];
+  let blueprints: AgentBlueprintResponse[] = [];
   try {
-    const res = await backendFetch("/agents");
-    if (res.ok) agents = (await res.json()) as AgentConfig[];
+    const res = await backendFetch("/agents/blueprints");
+    if (res.ok) blueprints = (await res.json()) as AgentBlueprintResponse[];
   } catch {}
 
-  return <Marketplace agents={agents} />;
+  return <Marketplace blueprints={blueprints} />;
 }

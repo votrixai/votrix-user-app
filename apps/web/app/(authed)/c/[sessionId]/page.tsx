@@ -41,13 +41,13 @@ function buildInitialMessages(
 
   for (const e of events) {
     const key = `${sessionId}-${e.event_index}`;
-    if (e.type === "user_message") {
+    if (e.event_type === "user_message") {
       messages.push({
         id: key,
         role: "user",
         parts: [{ type: "text", text: e.body }],
       });
-    } else if (e.type === "user_attachments") {
+    } else if (e.event_type === "user_attachments") {
       const last = messages[messages.length - 1];
       if (last?.role !== "user") continue;
       let atts: Array<{ file_id: string; filename?: string | null; content_type?: string }> = [];
@@ -61,9 +61,9 @@ function buildInitialMessages(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
       }
-    } else if (e.type === "ai_file") {
+    } else if (e.event_type === "ai_file") {
       try { pendingAiFiles.push(JSON.parse(e.body)); } catch {}
-    } else if (e.type === "ai_message") {
+    } else if (e.event_type === "ai_message") {
       const parts: UIMessage["parts"] = [{ type: "text", text: e.body }];
       for (const f of pendingAiFiles) {
         parts.push({
@@ -86,12 +86,12 @@ function isAwaitingAssistantResponse(events: SessionEventResponse[]) {
   let awaitingResponse = false;
 
   for (const event of events) {
-    if (event.type === "user_message") {
+    if (event.event_type === "user_message") {
       awaitingResponse = true;
       continue;
     }
 
-    if (event.type === "ai_message") {
+    if (event.event_type === "ai_message") {
       awaitingResponse = false;
     }
   }
