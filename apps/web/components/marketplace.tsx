@@ -16,9 +16,11 @@ export default function Marketplace({
   const [hiredIds, setHiredIds] = useState<Set<string>>(
     new Set(blueprints.filter((b) => b.is_hired).map((b) => b.id)),
   );
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const hire = (blueprint: AgentBlueprintResponse) => {
     setSelected(blueprint.slug);
+    setErrors((prev) => ({ ...prev, [blueprint.slug]: "" }));
     startHiring(async () => {
       // Step 1: Hire the employee
       const hireRes = await fetch("/api/employees/hire", {
@@ -27,11 +29,15 @@ export default function Marketplace({
         body: JSON.stringify({ agent_slug: blueprint.slug }),
       });
       if (!hireRes.ok) {
-        const msg = await hireRes.text().catch(() => "");
-        console.error("hire failed", hireRes.status, msg);
-        alert(
-          `Couldn't hire agent (${hireRes.status}): ${msg || "unknown error"}`,
-        );
+        const text = await hireRes.text().catch(() => "");
+        let detail = text;
+        try {
+          detail = (JSON.parse(text) as { detail?: string }).detail ?? text;
+        } catch {
+          // not JSON, use raw text
+        }
+        console.error("hire failed", hireRes.status, text);
+        setErrors((prev) => ({ ...prev, [blueprint.slug]: detail || "Couldn't hire agent. Please try again." }));
         setSelected(null);
         return;
       }
@@ -119,6 +125,10 @@ export default function Marketplace({
                         </span>
                       ))}
                     </div>
+                  )}
+
+                  {errors[bp.slug] && (
+                    <p className="text-xs text-destructive">{errors[bp.slug]}</p>
                   )}
 
                   <div className="mt-auto w-full pt-1">
