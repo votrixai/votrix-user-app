@@ -144,7 +144,7 @@ export default function Chat({
                   <button
                     type="button"
                     onClick={() => setFilesOpen((open) => !open)}
-                    className="inline-flex items-center gap-2 rounded-full border bg-background/95 px-3 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-accent"
+                    className="inline-flex items-center gap-2 rounded-md border bg-background/95 px-3 py-2 text-sm text-foreground shadow-ambient backdrop-blur transition-colors hover:bg-accent"
                     aria-expanded={filesOpen}
                     aria-controls="session-files-panel"
                   >
@@ -154,7 +154,7 @@ export default function Chat({
                       <PanelRightOpenIcon className="size-4" />
                     )}
                     <span>View Files</span>
-                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                    <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                       {sessionFiles.length}
                     </span>
                   </button>
@@ -172,7 +172,7 @@ export default function Chat({
                 />
                 <aside
                   id="session-files-panel"
-                  className="fixed inset-y-0 right-0 z-40 w-full max-w-sm border-l bg-background shadow-xl md:static md:z-0 md:w-80 md:max-w-none md:shrink-0 md:shadow-none"
+                  className="fixed inset-y-0 right-0 z-40 w-full max-w-sm border-l bg-background shadow-elevated md:static md:z-0 md:w-80 md:max-w-none md:shrink-0 md:shadow-none"
                 >
                   <SessionFilesPanel files={sessionFiles} onClose={() => setFilesOpen(false)} />
                 </aside>

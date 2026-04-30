@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Download, Trash2, FileIcon, Search, RefreshCw } from "lucide-react";
+import { useToast } from "@/lib/toast-context";
 
 export interface FileMeta {
   file_id: string;
@@ -19,6 +20,7 @@ export default function FilesWorkspace({
 }: {
   initialFiles: FileMeta[];
 }) {
+  const { toast } = useToast();
   const [files, setFiles] = useState<FileMeta[]>(initialFiles);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("uploads");
@@ -42,7 +44,13 @@ export default function FilesWorkspace({
     setRefreshing(true);
     try {
       const res = await fetch("/api/files");
-      if (res.ok) setFiles((await res.json()) as FileMeta[]);
+      if (res.ok) {
+        setFiles((await res.json()) as FileMeta[]);
+      } else {
+        toast("Could not refresh files. Please try again.");
+      }
+    } catch {
+      toast("Could not refresh files. Check your connection.");
     } finally {
       setRefreshing(false);
     }
@@ -55,7 +63,13 @@ export default function FilesWorkspace({
     setDeleting(id);
     try {
       const res = await fetch(`/api/files/${id}`, { method: "DELETE" });
-      if (res.ok) setFiles((prev) => prev.filter((f) => f.file_id !== id));
+      if (res.ok) {
+        setFiles((prev) => prev.filter((f) => f.file_id !== id));
+      } else {
+        toast("Could not delete file. Please try again.");
+      }
+    } catch {
+      toast("Could not delete file. Check your connection.");
     } finally {
       setDeleting(null);
     }
@@ -65,7 +79,7 @@ export default function FilesWorkspace({
     <div className="mx-auto flex h-full max-w-4xl flex-col px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Files</h1>
+          <h1 className="text-xl font-light tracking-tight">Files</h1>
           <p className="text-sm text-muted-foreground">
             Files in your workspace — what you uploaded, and what agents produced.
           </p>
@@ -96,6 +110,7 @@ export default function FilesWorkspace({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by filename"
+          aria-label="Search files"
           className="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
@@ -134,7 +149,7 @@ export default function FilesWorkspace({
                 <button
                   onClick={() => setConfirm(f)}
                   disabled={deleting === f.file_id}
-                  className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-red-600 hover:bg-background disabled:opacity-50"
+                  className="flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs text-destructive hover:bg-background disabled:opacity-50"
                   title="Delete"
                 >
                   <Trash2 className="size-3.5" />
@@ -154,10 +169,10 @@ export default function FilesWorkspace({
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-xl"
+            className="w-full max-w-sm rounded-md border border-border bg-background p-5 shadow-deep"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-base font-semibold">Delete file?</h2>
+            <h2 className="text-base font-light">Delete file?</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               This will permanently delete{" "}
               <span className="font-medium text-foreground">{confirm.filename}</span>.
@@ -171,7 +186,8 @@ export default function FilesWorkspace({
               </button>
               <button
                 onClick={confirmDelete}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                disabled={deleting !== null}
+                className="rounded-sm bg-destructive px-3 py-1.5 text-sm text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
                 Delete
               </button>
@@ -209,7 +225,7 @@ function TabButton({
       onClick={onClick}
       className={`-mb-px border-b-2 px-4 py-2 text-sm transition-colors ${
         active
-          ? "border-foreground font-medium text-foreground"
+          ? "border-primary font-medium text-foreground"
           : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >

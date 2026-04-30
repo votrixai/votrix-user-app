@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bot, Check, Loader2 } from "lucide-react";
+import { useToast } from "@/lib/toast-context";
 import type { AgentBlueprintResponse } from "@votrix/shared";
 
 export default function Marketplace({
@@ -11,6 +12,7 @@ export default function Marketplace({
   blueprints: AgentBlueprintResponse[];
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [hiring, startHiring] = useTransition();
   const [selected, setSelected] = useState<string | null>(null);
   const [hiredIds, setHiredIds] = useState<Set<string>>(
@@ -49,6 +51,7 @@ export default function Marketplace({
         body: JSON.stringify({ agent_slug: blueprint.slug }),
       });
       if (!sessionRes.ok) {
+        toast("Hired successfully, but could not start chat. Try from the sidebar.");
         setSelected(null);
         setHiredIds((prev) => new Set(prev).add(blueprint.id));
         router.refresh();
@@ -64,26 +67,32 @@ export default function Marketplace({
   const startChat = (blueprint: AgentBlueprintResponse) => {
     setSelected(blueprint.slug);
     startHiring(async () => {
-      const res = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_slug: blueprint.slug }),
-      });
-      if (!res.ok) {
+      try {
+        const res = await fetch("/api/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agent_slug: blueprint.slug }),
+        });
+        if (!res.ok) {
+          toast("Could not start chat. Please try again.");
+          setSelected(null);
+          return;
+        }
+        const session = await res.json();
         setSelected(null);
-        return;
+        router.push(`/c/${session.id}`);
+        router.refresh();
+      } catch {
+        toast("Could not start chat. Check your connection.");
+        setSelected(null);
       }
-      const session = await res.json();
-      setSelected(null);
-      router.push(`/c/${session.id}`);
-      router.refresh();
     });
   };
 
   return (
     <main className="h-full overflow-y-auto p-6">
       <div className="mx-auto max-w-3xl">
-        <h1 className="mb-2 text-2xl font-semibold">Marketplace</h1>
+        <h1 className="mb-2 text-2xl font-light tracking-tight">Marketplace</h1>
         <p className="mb-8 text-sm text-muted-foreground">
           Hire AI employees for your team.
         </p>
@@ -100,15 +109,15 @@ export default function Marketplace({
               return (
                 <div
                   key={bp.id}
-                  className="flex flex-col items-start gap-3 rounded-lg border border-border bg-background p-5 transition-colors"
+                  className="flex flex-col items-start gap-3 rounded-md border border-border bg-background p-5 shadow-ambient transition-colors"
                 >
                   <div className="flex w-full items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-md bg-muted">
                       <Bot className="size-5 text-muted-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium">{bp.display_name}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="truncate text-sm font-light text-foreground">{bp.display_name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
                         {bp.model}
                       </div>
                     </div>
@@ -119,7 +128,7 @@ export default function Marketplace({
                       {bp.skills.map((skill) => (
                         <span
                           key={skill}
-                          className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                          className="rounded-sm bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         >
                           {skill}
                         </span>
@@ -128,7 +137,7 @@ export default function Marketplace({
                   )}
 
                   {errors[bp.slug] && (
-                    <p className="text-xs text-destructive">{errors[bp.slug]}</p>
+                    <p className="line-clamp-2 rounded-sm bg-destructive/10 px-2 py-1.5 text-xs text-destructive">{errors[bp.slug]}</p>
                   )}
 
                   <div className="mt-auto w-full pt-1">
@@ -141,7 +150,7 @@ export default function Marketplace({
                         <button
                           onClick={() => startChat(bp)}
                           disabled={hiring}
-                          className="flex-1 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                          className="flex-1 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                         >
                           {isSelected ? (
                             <Loader2 className="mx-auto size-4 animate-spin" />
@@ -154,7 +163,7 @@ export default function Marketplace({
                       <button
                         onClick={() => hire(bp)}
                         disabled={hiring}
-                        className="w-full rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                        className="w-full rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                       >
                         {isSelected ? (
                           <Loader2 className="mx-auto size-4 animate-spin" />

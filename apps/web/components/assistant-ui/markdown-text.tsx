@@ -69,7 +69,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h1: ({ className, ...props }) => (
     <h1
       className={cn(
-        "aui-md-h1 mb-2 scroll-m-20 font-semibold text-base first:mt-0 last:mb-0",
+        "aui-md-h1 mb-2 scroll-m-20 font-medium text-base first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -78,7 +78,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h2: ({ className, ...props }) => (
     <h2
       className={cn(
-        "aui-md-h2 mt-3 mb-1.5 scroll-m-20 font-semibold text-sm first:mt-0 last:mb-0",
+        "aui-md-h2 mt-3 mb-1.5 scroll-m-20 font-medium text-sm first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -87,7 +87,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h3: ({ className, ...props }) => (
     <h3
       className={cn(
-        "aui-md-h3 mt-2.5 mb-1 scroll-m-20 font-semibold text-sm first:mt-0 last:mb-0",
+        "aui-md-h3 mt-2.5 mb-1 scroll-m-20 font-medium text-sm first:mt-0 last:mb-0",
         className,
       )}
       {...props}

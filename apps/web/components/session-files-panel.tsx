@@ -14,7 +14,7 @@ export function SessionFilesPanel({
     <section className="flex h-full flex-col bg-muted/20">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Session Files</h2>
+          <h2 className="text-sm font-light text-foreground">Session Files</h2>
           <p className="text-xs text-muted-foreground">{files.length} available</p>
         </div>
         <button
