@@ -12,9 +12,11 @@ import {
   ChevronRight,
   ChevronDown,
   Bot,
+  FileText,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useEmployeePanel } from "@/lib/employee-panel-context";
+import { useToast } from "@/lib/toast-context";
 import type { SessionResponse, AgentEmployeeResponse } from "@votrix/shared";
 
 type Props = {
@@ -49,7 +51,9 @@ export default function Sidebar({ email, userId }: Props) {
   const pathname = usePathname();
   const activeId = params?.sessionId;
   const marketplaceActive = pathname === "/marketplace";
+  const filesActive = pathname === "/files";
   const { openPanel } = useEmployeePanel();
+  const { toast } = useToast();
 
   const [employees, setEmployees] = useState<AgentEmployeeResponse[]>([]);
   const [sessions, setSessions] = useState<SessionResponse[]>([]);
@@ -89,22 +93,28 @@ export default function Sidebar({ email, userId }: Props) {
     (slug: string) => {
       setCreatingSlug(slug);
       startCreating(async () => {
-        const res = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_slug: slug }),
-        });
-        if (!res.ok) {
+        try {
+          const res = await fetch("/api/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agent_slug: slug }),
+          });
+          if (!res.ok) {
+            toast("Could not create chat. Please try again.");
+            setCreatingSlug(null);
+            return;
+          }
+          const data = await res.json();
           setCreatingSlug(null);
-          return;
+          router.push(`/c/${data.id}`);
+          router.refresh();
+        } catch {
+          toast("Could not create chat. Check your connection.");
+          setCreatingSlug(null);
         }
-        const data = await res.json();
-        setCreatingSlug(null);
-        router.push(`/c/${data.id}`);
-        router.refresh();
       });
     },
-    [router],
+    [router, toast],
   );
 
   // Context menu & delete state
@@ -164,8 +174,14 @@ export default function Sidebar({ email, userId }: Props) {
     if (activeId === id) router.push("/");
     setDeleting((prev) => new Set(prev).add(id));
     try {
-      await fetch(`/api/sessions/${id}`, { method: "DELETE" });
-      setSessions((prev) => prev.filter((s) => s.id !== id));
+      const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setSessions((prev) => prev.filter((s) => s.id !== id));
+      } else {
+        toast("Could not delete chat. Please try again.");
+      }
+    } catch {
+      toast("Could not delete chat. Check your connection.");
     } finally {
       setDeleting((prev) => {
         const next = new Set(prev);
@@ -202,10 +218,10 @@ export default function Sidebar({ email, userId }: Props) {
   const hasEmployees = employees.length > 0;
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-border bg-muted/30">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-muted/30">
       {/* Header */}
       <div className="space-y-0.5 p-3">
-        <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="px-2 py-1 text-xs uppercase tracking-wider text-muted-foreground">
           My Employees
         </div>
       </div>
@@ -226,7 +242,7 @@ export default function Sidebar({ email, userId }: Props) {
             </p>
             <Link
               href="/marketplace"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
             >
               <Store className="size-3.5" />
               Browse Marketplace
@@ -260,7 +276,7 @@ export default function Sidebar({ email, userId }: Props) {
                   <div className="flex size-6 shrink-0 items-center justify-center rounded bg-muted">
                     <Bot className="size-3.5 text-muted-foreground" />
                   </div>
-                  <span className="truncate text-sm font-medium text-foreground">
+                  <span className="truncate text-sm font-light text-foreground">
                     {employee.display_name}
                   </span>
                 </button>
@@ -290,28 +306,45 @@ export default function Sidebar({ email, userId }: Props) {
                   {empSessions.map((s) => (
                     <li
                       key={s.id}
+                      className="group/session"
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setMenu({ id: s.id, x: e.clientX, y: e.clientY });
                       }}
                     >
-                      <Link
-                        href={`/c/${s.id}`}
-                        className={`flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors ${
+                      <div
+                        className={`flex items-center gap-1 rounded-md py-1 pl-2 pr-1 text-sm transition-colors ${
                           deleting.has(s.id)
                             ? "pointer-events-none opacity-50"
                             : activeId === s.id
                               ? "bg-muted font-medium text-foreground"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         }`}
-                        title={labelFor(s)}
                       >
                         {deleting.has(s.id) && (
                           <Loader2 className="size-3 shrink-0 animate-spin" />
                         )}
-                        <span className="truncate">{labelFor(s)}</span>
-                      </Link>
+                        <Link
+                          href={`/c/${s.id}`}
+                          className="min-w-0 flex-1 truncate"
+                          title={labelFor(s)}
+                        >
+                          {labelFor(s)}
+                        </Link>
+                        {!deleting.has(s.id) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(s);
+                            }}
+                            className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/session:opacity-100"
+                            aria-label={`Delete ${labelFor(s)}`}
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -320,26 +353,39 @@ export default function Sidebar({ email, userId }: Props) {
           );
         })}
 
-        {/* Browse marketplace link */}
+        {/* Navigation links */}
         {hasEmployees && (
-          <Link
-            href="/marketplace"
-            className={`mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-              marketplaceActive
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-            }`}
-          >
-            <Store className="size-4" />
-            Browse Marketplace
-          </Link>
+          <div className="mt-2 space-y-0.5">
+            <Link
+              href="/files"
+              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                filesActive
+                  ? "bg-muted font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              }`}
+            >
+              <FileText className="size-4" />
+              Files
+            </Link>
+            <Link
+              href="/marketplace"
+              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                marketplaceActive
+                  ? "bg-muted font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              }`}
+            >
+              <Store className="size-4" />
+              Browse Marketplace
+            </Link>
+          </div>
         )}
       </nav>
 
       {/* Context menu */}
       {menu && (
         <div
-          className="fixed z-50 min-w-40 overflow-hidden rounded-md border border-border bg-background shadow-lg"
+          className="fixed z-50 min-w-40 overflow-hidden rounded-md border border-border bg-background shadow-elevated"
           style={{ top: menu.y, left: menu.x }}
           onClick={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
@@ -349,7 +395,7 @@ export default function Sidebar({ email, userId }: Props) {
               const s = sessions.find((x) => x.id === menu.id);
               if (s) openDeleteConfirm(s);
             }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-muted"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-muted"
           >
             <Trash2 className="size-4" />
             Delete chat
@@ -366,10 +412,10 @@ export default function Sidebar({ email, userId }: Props) {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-xl"
+            className="w-full max-w-sm rounded-md border border-border bg-background p-5 shadow-deep"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-base font-semibold">Delete chat?</h2>
+            <h2 className="text-base font-light">Delete chat?</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               This will delete{" "}
               <span className="font-medium text-foreground">
@@ -386,7 +432,8 @@ export default function Sidebar({ email, userId }: Props) {
               </button>
               <button
                 onClick={confirmDelete}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                disabled={deleting.size > 0}
+                className="rounded-sm bg-destructive px-3 py-1.5 text-sm text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
                 Delete
               </button>
@@ -408,12 +455,6 @@ export default function Sidebar({ email, userId }: Props) {
           >
             <LogOut className="size-4" />
           </button>
-        </div>
-        <div
-          className="mt-1 text-xs text-muted-foreground/60"
-          title={userId}
-        >
-          {userId}
         </div>
       </div>
     </aside>

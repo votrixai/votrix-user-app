@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { EmployeePanelProvider } from "@/lib/employee-panel-context";
+import { ToastProvider } from "@/lib/toast-context";
+import { Toaster } from "@/components/ui/toaster";
 import { EmployeeDetailPanel } from "@/components/employee-detail-panel";
 import Sidebar from "@/components/sidebar";
 import type { SessionResponse } from "@votrix/shared";
@@ -25,12 +27,15 @@ export function AuthedShell({
   }, []);
 
   return (
-    <EmployeePanelProvider>
-      <div className="flex h-dvh">
-        <Sidebar email={email} userId={userId} />
-        <div className="flex-1 overflow-hidden">{children}</div>
-        <EmployeeDetailPanel sessions={sessions} />
-      </div>
-    </EmployeePanelProvider>
+    <ToastProvider>
+      <EmployeePanelProvider>
+        <div className="flex h-dvh">
+          <Sidebar email={email} userId={userId} />
+          <div className="flex-1 overflow-hidden">{children}</div>
+          <EmployeeDetailPanel sessions={sessions} />
+        </div>
+      </EmployeePanelProvider>
+      <Toaster />
+    </ToastProvider>
   );
 }

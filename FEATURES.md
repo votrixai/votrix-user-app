@@ -55,7 +55,8 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 |---------|-----|--------|-------|
 | Sidebar with employee groups | ✅ | ❌ | WhatsApp-style collapsible groups |
 | Chat grouping by employee | ✅ | ❌ | Replaces time-based grouping |
-| Delete session (context menu) | ✅ | ⏳ | Long-press on mobile |
+| Delete session (context menu + hover icon) | ✅ | ⏳ | Long-press on mobile |
+| Files link in sidebar | ✅ | ❌ | |
 | Marketplace page | ✅ | ❌ | |
 | Home page (employee-first) | ✅ | ❌ | Shows employees or marketplace CTA |
 
@@ -74,3 +75,12 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 | GET /api/blueprints | ✅ | ❌ | |
 | GET/POST /api/files | ✅ | ❌ | |
 | GET /api/files/:id/content | ✅ | ❌ | |
+
+## UX Hardening
+
+| Feature | Web | Mobile | Notes |
+|---------|-----|--------|-------|
+| Toast notification system | ✅ | ❌ | Error/success feedback for mutations |
+| Error page (error.tsx) | ✅ | ❌ | Branded with retry action |
+| Not-found page (not-found.tsx) | ✅ | ❌ | Branded 404 |
+| Mutation error feedback | ✅ | ❌ | Toasts on delete, create, upload failures |

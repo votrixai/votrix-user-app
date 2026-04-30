@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEmployeePanel } from "@/lib/employee-panel-context";
+import { useToast } from "@/lib/toast-context";
 import type {
   MemoryStoreResponse,
   MemoryResponse,
@@ -26,6 +27,7 @@ export function EmployeeDetailPanel({
 }) {
   const router = useRouter();
   const { selectedEmployee, closePanel } = useEmployeePanel();
+  const { toast } = useToast();
   const [memoryStores, setMemoryStores] = useState<MemoryStoreResponse[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set());
@@ -93,29 +95,46 @@ export function EmployeeDetailPanel({
   const handleRemove = () => {
     if (!selectedEmployee) return;
     startRemoving(async () => {
-      await fetch(`/api/employees/${selectedEmployee.id}`, {
-        method: "DELETE",
-      });
-      setShowRemoveConfirm(false);
-      closePanel();
-      router.refresh();
-      window.location.reload();
+      try {
+        const res = await fetch(`/api/employees/${selectedEmployee.id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          toast("Could not remove employee. Please try again.");
+          setShowRemoveConfirm(false);
+          return;
+        }
+        setShowRemoveConfirm(false);
+        closePanel();
+        router.refresh();
+        window.location.reload();
+      } catch {
+        toast("Could not remove employee. Check your connection.");
+        setShowRemoveConfirm(false);
+      }
     });
   };
 
   const handleNewChat = () => {
     if (!selectedEmployee) return;
     startCreating(async () => {
-      const res = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_slug: selectedEmployee.slug }),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      closePanel();
-      router.push(`/c/${data.id}`);
-      router.refresh();
+      try {
+        const res = await fetch("/api/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agent_slug: selectedEmployee.slug }),
+        });
+        if (!res.ok) {
+          toast("Could not create chat. Please try again.");
+          return;
+        }
+        const data = await res.json();
+        closePanel();
+        router.push(`/c/${data.id}`);
+        router.refresh();
+      } catch {
+        toast("Could not create chat. Check your connection.");
+      }
     });
   };
 
@@ -142,7 +161,7 @@ export function EmployeeDetailPanel({
       />
 
       {/* Panel */}
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-background shadow-xl">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-background shadow-elevated">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <button
@@ -156,7 +175,7 @@ export function EmployeeDetailPanel({
             <Bot className="size-4 text-muted-foreground" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-semibold text-foreground">
+            <h2 className="truncate font-light text-foreground">
               {selectedEmployee.display_name}
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -166,7 +185,7 @@ export function EmployeeDetailPanel({
           <button
             onClick={handleNewChat}
             disabled={creating}
-            className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {creating ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -196,7 +215,7 @@ export function EmployeeDetailPanel({
 
           {/* Memory Stores */}
           <div className="border-b border-border px-4 py-3">
-            <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
               <Brain className="size-3.5" />
               Memory Stores
             </h3>
@@ -277,7 +296,7 @@ export function EmployeeDetailPanel({
 
           {/* Recent chats */}
           <div className="border-b border-border px-4 py-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
               Recent Chats
             </h3>
             {employeeSessions.length === 0 ? (
@@ -312,7 +331,7 @@ export function EmployeeDetailPanel({
           <div className="px-4 py-4">
             <button
               onClick={() => setShowRemoveConfirm(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
+              className="flex w-full items-center justify-center gap-2 rounded-sm border border-destructive/20 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/5"
             >
               <Trash2 className="size-3.5" />
               Remove from team
@@ -329,10 +348,10 @@ export function EmployeeDetailPanel({
             <div
               role="dialog"
               aria-modal="true"
-              className="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-xl"
+              className="w-full max-w-sm rounded-md border border-border bg-background p-5 shadow-deep"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-base font-semibold">
+              <h2 className="text-base font-light">
                 Remove {selectedEmployee.display_name}?
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -349,7 +368,7 @@ export function EmployeeDetailPanel({
                 <button
                   onClick={handleRemove}
                   disabled={removing}
-                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  className="rounded-sm bg-destructive px-3 py-1.5 text-sm text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
                 >
                   {removing ? (
                     <Loader2 className="size-4 animate-spin" />
