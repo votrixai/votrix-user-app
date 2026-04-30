@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEmployeePanel } from "@/lib/employee-panel-context";
+import { useSessionRefresh } from "@/lib/session-refresh-context";
 import { useToast } from "@/lib/toast-context";
 import type {
   MemoryStoreResponse,
@@ -28,6 +29,7 @@ export function EmployeeDetailPanel({
   const router = useRouter();
   const { selectedEmployee, closePanel } = useEmployeePanel();
   const { toast } = useToast();
+  const { refreshSessions } = useSessionRefresh();
   const [memoryStores, setMemoryStores] = useState<MemoryStoreResponse[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set());
@@ -131,37 +133,42 @@ export function EmployeeDetailPanel({
         const data = await res.json();
         closePanel();
         router.push(`/c/${data.id}`);
-        router.refresh();
+        refreshSessions();
       } catch {
         toast("Could not create chat. Check your connection.");
       }
     });
   };
 
-  if (!selectedEmployee) return null;
+  const employeeSessions = selectedEmployee
+    ? sessions
+        .filter(
+          (s) =>
+            s.agent_blueprint_id === selectedEmployee.agent_blueprint_id,
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        )
+        .slice(0, 10)
+    : [];
 
-  const employeeSessions = sessions
-    .filter(
-      (s) =>
-        s.agent_blueprint_id === selectedEmployee.agent_blueprint_id,
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
-    .slice(0, 10);
+  if (!selectedEmployee) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/40"
+        className="fixed inset-0 z-40 animate-in fade-in bg-black/40 backdrop-blur-sm duration-200"
         onClick={closePanel}
         aria-hidden="true"
       />
 
       {/* Panel */}
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-background shadow-elevated">
+      <aside
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-background shadow-elevated animate-in slide-in-from-right duration-200"
+        style={{ animationTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+      >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <button
@@ -342,7 +349,7 @@ export function EmployeeDetailPanel({
         {/* Remove confirmation */}
         {showRemoveConfirm && (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={() => setShowRemoveConfirm(false)}
           >
             <div

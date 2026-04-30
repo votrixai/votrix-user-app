@@ -1,7 +1,7 @@
 import { backendFetch } from "@/lib/backend";
+import { buildInitialMessages, isAwaitingAssistantResponse } from "@/lib/session-messages";
 import Chat from "@/components/chat";
-import type { UIMessage } from "ai";
-import type { SessionDetailResponse, SessionEventResponse, SessionFileResponse } from "@votrix/shared";
+import type { AgentEmployeeResponse, SessionDetailResponse, SessionFileResponse } from "@votrix/shared";
 import { notFound } from "next/navigation";
 
 export default async function SessionPage({
@@ -11,13 +11,19 @@ export default async function SessionPage({
 }) {
   const { sessionId } = await params;
 
-  const [detailRes, filesRes] = await Promise.all([
+  const [detailRes, filesRes, employeesRes] = await Promise.all([
     backendFetch(`/sessions/${sessionId}`),
     backendFetch(`/sessions/${sessionId}/files`),
+    backendFetch(`/employees`),
   ]);
   if (!detailRes.ok) notFound();
   const detail = (await detailRes.json()) as SessionDetailResponse;
   const files: SessionFileResponse[] = filesRes.ok ? await filesRes.json() : [];
+  const employees: AgentEmployeeResponse[] = employeesRes.ok ? await employeesRes.json() : [];
+
+  const employeeName = detail.agent_blueprint_id
+    ? employees.find((e) => e.agent_blueprint_id === detail.agent_blueprint_id)?.display_name
+    : undefined;
 
   const initialMessages = buildInitialMessages(detail.id, detail.events);
   const awaitingResponse = isAwaitingAssistantResponse(detail.events);
@@ -28,73 +34,7 @@ export default async function SessionPage({
       sessionId={sessionId}
       sessionFiles={files}
       awaitingResponse={awaitingResponse}
+      employeeName={employeeName}
     />
   );
-}
-
-function buildInitialMessages(
-  sessionId: string,
-  events: SessionEventResponse[],
-): UIMessage[] {
-  const messages: UIMessage[] = [];
-  const pendingAiFiles: Array<{ file_id: string; filename: string | null; mime_type: string | null }> = [];
-
-  for (const e of events) {
-    const key = `${sessionId}-${e.event_index}`;
-    if (e.event_type === "user_message") {
-      messages.push({
-        id: key,
-        role: "user",
-        parts: [{ type: "text", text: e.body }],
-      });
-    } else if (e.event_type === "user_attachments") {
-      const last = messages[messages.length - 1];
-      if (last?.role !== "user") continue;
-      let atts: Array<{ file_id: string; filename?: string | null; content_type?: string }> = [];
-      try { atts = JSON.parse(e.body); } catch { continue; }
-      for (const a of atts) {
-        last.parts.push({
-          type: "file",
-          mediaType: a.content_type === "image" ? "image/*" : "application/octet-stream",
-          filename: a.filename ?? "attachment",
-          url: `anthropic-file://${a.file_id}`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any);
-      }
-    } else if (e.event_type === "ai_file") {
-      try { pendingAiFiles.push(JSON.parse(e.body)); } catch {}
-    } else if (e.event_type === "ai_message") {
-      const parts: UIMessage["parts"] = [{ type: "text", text: e.body }];
-      for (const f of pendingAiFiles) {
-        parts.push({
-          type: "tool-call",
-          toolCallId: `${key}-${f.file_id}`,
-          toolName: "__file_output__",
-          args: { file_id: f.file_id, filename: f.filename, mime_type: f.mime_type },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any);
-      }
-      pendingAiFiles.length = 0;
-      messages.push({ id: key, role: "assistant", parts });
-    }
-  }
-
-  return messages;
-}
-
-function isAwaitingAssistantResponse(events: SessionEventResponse[]) {
-  let awaitingResponse = false;
-
-  for (const event of events) {
-    if (event.event_type === "user_message") {
-      awaitingResponse = true;
-      continue;
-    }
-
-    if (event.event_type === "ai_message") {
-      awaitingResponse = false;
-    }
-  }
-
-  return awaitingResponse;
 }

@@ -1,4 +1,5 @@
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { ReasoningBlock } from "@/components/assistant-ui/reasoning-block";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  Bot,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -31,10 +33,14 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
-import { type FC, forwardRef, useLayoutEffect, useRef, useState } from "react";
+import { type FC, forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useComposedRefs } from "@radix-ui/react-compose-refs";
 
-export const Thread: FC = () => {
+// ---------------------------------------------------------------------------
+// Thread root
+// ---------------------------------------------------------------------------
+
+export const Thread: FC<{ employeeName?: string }> = ({ employeeName }) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
@@ -51,7 +57,7 @@ export const Thread: FC = () => {
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
       >
         <AuiIf condition={(s) => s.thread.isEmpty}>
-          <ThreadWelcome />
+          <ThreadWelcome employeeName={employeeName} />
         </AuiIf>
 
         <div className="mx-auto flex min-h-0 w-full max-w-(--thread-max-width) flex-1 flex-col justify-end">
@@ -69,11 +75,23 @@ export const Thread: FC = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// Thread message — wrapper with entrance animation
+// ---------------------------------------------------------------------------
+
 const ThreadMessage: FC = () => {
   const role = useAuiState((s) => s.message.role);
-  if (role === "user") return <UserMessage />;
-  return <AssistantMessage />;
+  const statusType = useAuiState((s) => s.message.status?.type);
+  const mountedComplete = useRef(statusType !== "running");
+  const shouldAnimate = !mountedComplete.current;
+
+  if (role === "user") return <UserMessage shouldAnimate={shouldAnimate} />;
+  return <AssistantMessage shouldAnimate={shouldAnimate} />;
 };
+
+// ---------------------------------------------------------------------------
+// Scroll to bottom — bottom-right floating button
+// ---------------------------------------------------------------------------
 
 const ThreadScrollToBottom: FC = () => {
   return (
@@ -81,35 +99,62 @@ const ThreadScrollToBottom: FC = () => {
       <TooltipIconButton
         tooltip="Scroll to bottom"
         variant="outline"
-        className="aui-thread-scroll-to-bottom absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible dark:border-border dark:bg-background dark:hover:bg-accent"
+        className="aui-thread-scroll-to-bottom absolute bottom-4 right-4 z-10 size-9 rounded-full bg-background/80 backdrop-blur-sm transition-all duration-200 data-[disabled]:pointer-events-none data-[disabled]:translate-y-4 data-[disabled]:opacity-0 dark:border-border dark:bg-background/80"
       >
-        <ArrowDownIcon />
+        <ArrowDownIcon className="size-4" />
       </TooltipIconButton>
     </ThreadPrimitive.ScrollToBottom>
   );
 };
 
-const ThreadWelcome: FC = () => {
+// ---------------------------------------------------------------------------
+// Welcome state — personalized with employee name
+// ---------------------------------------------------------------------------
+
+const ThreadWelcome: FC<{ employeeName?: string }> = ({ employeeName }) => {
   return (
-    <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
+    <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) min-h-[50vh] grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
         <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
-          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-light tracking-tight text-2xl duration-200">
-            Hello there!
+          {employeeName && (
+            <div
+              className="mb-4 flex size-10 items-center justify-center rounded-lg bg-muted animate-stagger-in"
+              style={{ "--stagger-index": 0 } as React.CSSProperties}
+            >
+              <Bot className="size-5 text-muted-foreground" />
+            </div>
+          )}
+          <h1
+            className="aui-thread-welcome-message-inner font-light tracking-tight text-2xl animate-stagger-in"
+            style={{ "--stagger-index": 1 } as React.CSSProperties}
+          >
+            {employeeName ?? "Hello there!"}
           </h1>
-          <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
+          <p
+            className="aui-thread-welcome-message-inner text-muted-foreground text-xl animate-stagger-in"
+            style={{ "--stagger-index": 2 } as React.CSSProperties}
+          >
             How can I help you today?
           </p>
         </div>
       </div>
-      <ThreadSuggestions />
+      <div
+        className="animate-stagger-in"
+        style={{ "--stagger-index": 4 } as React.CSSProperties}
+      >
+        <ThreadSuggestions />
+      </div>
     </div>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Suggestion chips — staggered entrance, chip-style pills
+// ---------------------------------------------------------------------------
+
 const ThreadSuggestions: FC = () => {
   return (
-    <div className="aui-thread-welcome-suggestions grid w-full @md:grid-cols-2 gap-2 pb-4">
+    <div className="aui-thread-welcome-suggestions flex max-w-[460px] flex-wrap gap-1.5 pb-4">
       <ThreadPrimitive.Suggestions>
         {() => <ThreadSuggestionItem />}
       </ThreadPrimitive.Suggestions>
@@ -119,17 +164,11 @@ const ThreadSuggestions: FC = () => {
 
 const ThreadSuggestionItem: FC = () => {
   return (
-    <div className="aui-thread-welcome-suggestion-display fade-in slide-in-from-bottom-2 @md:nth-[n+3]:block nth-[n+3]:hidden animate-in fill-mode-both duration-200">
-      <SuggestionPrimitive.Trigger send asChild>
-        <Button
-          variant="ghost"
-          className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-lg border bg-background px-4 py-3 text-left text-sm shadow-ambient transition-colors hover:shadow-standard"
-        >
-          <SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1 font-medium" />
-          <SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 text-muted-foreground empty:hidden" />
-        </Button>
-      </SuggestionPrimitive.Trigger>
-    </div>
+    <SuggestionPrimitive.Trigger send asChild>
+      <button className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground transition-colors duration-150 hover:bg-secondary">
+        <SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1" />
+      </button>
+    </SuggestionPrimitive.Trigger>
   );
 };
 
@@ -158,8 +197,7 @@ const AttachmentChip: FC<{ att: PendingAttachment; onRemove: () => void }> = ({
 };
 
 // ---------------------------------------------------------------------------
-// IME-safe textarea — uncontrolled internally so React never resets the DOM
-// value during CJK / IME composition.
+// IME-safe textarea
 // ---------------------------------------------------------------------------
 
 const IMESafeTextarea = forwardRef<
@@ -198,7 +236,7 @@ const IMESafeTextarea = forwardRef<
 IMESafeTextarea.displayName = "IMESafeTextarea";
 
 // ---------------------------------------------------------------------------
-// Composer with attachment support
+// Composer with attachment support + resizable height
 // ---------------------------------------------------------------------------
 
 const Composer: FC = () => {
@@ -241,7 +279,7 @@ const Composer: FC = () => {
     >
       <div
         data-slot="composer-shell"
-        className="flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-background p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20"
+        className="flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-background p-(--composer-padding) transition-shadow focus-within:border-primary focus-within:shadow-[0_0_0_2px_rgba(83,58,253,0.3)]"
       >
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-1 pt-0.5">
@@ -261,7 +299,7 @@ const Composer: FC = () => {
         >
           <IMESafeTextarea
             placeholder="Send a message..."
-            className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80 [field-sizing:content]"
+            className="aui-composer-input max-h-80 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80 [field-sizing:content]"
             rows={1}
           />
         </ComposerPrimitive.Input>
@@ -275,7 +313,7 @@ const Composer: FC = () => {
               onChange={handleFileSelect}
             />
             <TooltipIconButton
-              tooltip={uploading ? "Uploading…" : "Attach file"}
+              tooltip={uploading ? "Uploading..." : "Attach file"}
               type="button"
               variant="ghost"
               size="icon"
@@ -309,7 +347,7 @@ const ComposerAction: FC<{ onSend?: () => void }> = ({ onSend }) => {
             type="button"
             variant="default"
             size="icon"
-            className="aui-composer-send size-8 rounded-full"
+            className="aui-composer-send size-8 rounded-full active:scale-95 transition-transform duration-100"
             aria-label="Send message"
             onClick={onSend}
           >
@@ -335,7 +373,7 @@ const ComposerAction: FC<{ onSend?: () => void }> = ({ onSend }) => {
 };
 
 // ---------------------------------------------------------------------------
-// File download card — rendered when agent produces a file output
+// File download card
 // ---------------------------------------------------------------------------
 
 const FileDownloadCard: FC<{ input: Record<string, unknown> }> = ({ input }) => {
@@ -353,16 +391,6 @@ const FileDownloadCard: FC<{ input: Record<string, unknown> }> = ({ input }) => 
   );
 };
 
-const FileAttachmentCard: FC<{ input: Record<string, unknown> }> = ({ input }) => {
-  const filename = (input.filename as string | null) ?? "Attached file";
-  return (
-    <div className="mt-1.5 inline-flex items-center gap-2 rounded-lg border bg-background/60 px-2.5 py-1.5 text-xs text-foreground">
-      <PaperclipIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="max-w-48 truncate">{filename}</span>
-    </div>
-  );
-};
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const UserAttachmentChip: FC<{ attachment: any }> = ({ attachment }) => {
   const filename: string = attachment?.name ?? "Attachment";
@@ -372,12 +400,7 @@ const UserAttachmentChip: FC<{ attachment: any }> = ({ attachment }) => {
 
   return (
     <div className="flex max-w-[18rem] items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 shadow-ambient">
-      <div
-        className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
-          isImage ? "bg-primary/10 text-primary"
-                  : "bg-primary/10 text-primary"
-        }`}
-      >
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
         <FileIconSmall isImage={isImage} />
       </div>
       <div className="min-w-0 flex-1">
@@ -423,22 +446,51 @@ const MessageError: FC = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// Thinking indicator — 3 pulse dots + elapsed time
+// ---------------------------------------------------------------------------
+
 const ThinkingIndicator: FC = () => {
+  const [elapsed, setElapsed] = useState(0);
+  const [showElapsed, setShowElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowElapsed(true), 2100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!showElapsed) return;
+    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(interval);
+  }, [showElapsed]);
+
   return (
     <div className="flex items-center gap-2 py-1 text-muted-foreground text-sm">
-      <span className="relative flex size-3 items-center justify-center">
-        <span className="absolute inline-flex size-2 animate-ping rounded-full bg-foreground opacity-60" />
-        <span className="relative inline-flex size-2 rounded-full bg-foreground" />
+      <span className="flex items-center gap-0.5">
+        <span className="size-1.5 rounded-full bg-foreground/70 animate-pulse-dot" />
+        <span className="size-1.5 rounded-full bg-foreground/70 animate-pulse-dot" style={{ animationDelay: "0.15s" }} />
+        <span className="size-1.5 rounded-full bg-foreground/70 animate-pulse-dot" style={{ animationDelay: "0.3s" }} />
       </span>
-      <span>Thinking…</span>
+      <span>
+        Thinking{showElapsed ? `... (${elapsed}s)` : "..."}
+      </span>
     </div>
   );
 };
 
-const AssistantMessage: FC = () => {
+// ---------------------------------------------------------------------------
+// Assistant message
+// ---------------------------------------------------------------------------
+
+const AssistantMessage: FC<{ shouldAnimate?: boolean }> = ({ shouldAnimate = false }) => {
   return (
     <MessagePrimitive.Root
-      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-1 duration-150"
+      className={cn(
+        "aui-assistant-message-root group/message relative mx-auto w-full max-w-(--thread-max-width) py-2",
+        shouldAnimate && "animate-stagger-in",
+      )}
+      style={shouldAnimate ? { "--stagger-index": 0 } as React.CSSProperties : undefined}
       data-role="assistant"
     >
       <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
@@ -446,7 +498,9 @@ const AssistantMessage: FC = () => {
           condition={(s) =>
             s.message.status?.type === "running" &&
             !s.message.parts.some(
-              (p) => p.type === "text" && p.text.length > 0,
+              (p) =>
+                (p.type === "text" && p.text.length > 0) ||
+                p.type === "reasoning",
             )
           }
         >
@@ -455,6 +509,7 @@ const AssistantMessage: FC = () => {
         <MessagePrimitive.Parts>
           {({ part }) => {
             if (part.type === "text") return <MarkdownText />;
+            if (part.type === "reasoning") return <ReasoningBlock />;
             if (part.type === "tool-call") {
               if (part.toolName === "__file_output__")
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -467,7 +522,7 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
-      <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+      <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center opacity-0 transition-opacity duration-200 group-hover/message:opacity-100 group-last/message:opacity-100">
         <BranchPicker />
         <AssistantActionBar />
       </div>
@@ -501,21 +556,29 @@ const AssistantActionBar: FC = () => {
   );
 };
 
-const UserMessage: FC = () => {
+// ---------------------------------------------------------------------------
+// User message
+// ---------------------------------------------------------------------------
+
+const UserMessage: FC<{ shouldAnimate?: boolean }> = ({ shouldAnimate = false }) => {
   return (
     <MessagePrimitive.Root
-      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full max-w-(--thread-max-width) animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-1 px-2 py-1 duration-150 [&:where(>*)]:col-start-2"
+      className={cn(
+        "aui-user-message-root group/message mx-auto grid w-full max-w-(--thread-max-width) auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-1 px-2 py-2 [&:where(>*)]:col-start-2",
+        shouldAnimate && "animate-stagger-in",
+      )}
+      style={shouldAnimate ? { "--stagger-index": 0 } as React.CSSProperties : undefined}
       data-role="user"
     >
       <div className="aui-user-message-content-wrapper relative col-start-2 flex min-w-0 flex-col items-end gap-1.5">
         <AuiIf condition={(s) => !s.composer.isEditing}>
-          <div className="aui-user-message-content wrap-break-word peer rounded-lg bg-muted px-4 py-2.5 text-foreground empty:hidden">
+          <div className="aui-user-message-content wrap-break-word peer rounded-lg bg-muted px-3 py-2 text-foreground empty:hidden">
             <MessagePrimitive.Parts />
           </div>
           <MessagePrimitive.Attachments>
             {({ attachment }) => <UserAttachmentChip attachment={attachment} />}
           </MessagePrimitive.Attachments>
-          <div className="flex min-h-7 justify-end">
+          <div className="flex min-h-7 justify-end opacity-0 transition-opacity duration-200 group-hover/message:opacity-100">
             <UserActionBar />
           </div>
         </AuiIf>
