@@ -53,14 +53,16 @@ export function buildInitialMessages(
       const parts: UIMessage["parts"] = [{ type: "text", text: e.body }];
       for (const f of pendingAiFiles) {
         parts.push({
-          type: "tool-call",
-          toolCallId: `${key}-${f.file_id}`,
+          type: "dynamic-tool",
           toolName: "__file_output__",
-          args: {
+          toolCallId: `${key}-${f.file_id}`,
+          state: "output-available",
+          input: {
             file_id: f.file_id,
             filename: f.filename,
             mime_type: f.mime_type,
           },
+          output: undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
       }

@@ -35,10 +35,14 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 |---------|-----|--------|-------|
 | Start new chat (employee selection) | ✅ | ⏳ | From session panel or home page |
 | Chat thread (send/receive messages) | ✅ | ⏳ | |
-| Streaming responses | ✅ | ⏳ | SSE via ai-sdk, smooth text streaming |
-| Markdown rendering | ✅ | ❌ | |
+| Streaming responses | ✅ | ⏳ | SSE via ai-sdk useChat, custom chat UI |
+| Markdown rendering | ✅ | ❌ | react-markdown + remark-gfm, LobeHub-inspired typography |
 | Tool call display (rich) | ✅ | ❌ | Auto-expand, timer, status colors, shimmer |
 | Reasoning/thinking blocks | ✅ | ❌ | Collapsible, auto-expand while streaming |
+| Export conversation | ✅ | ❌ | Download as .md file |
+| Image preview + lightbox | ✅ | ❌ | Inline thumbnail, click to zoom |
+| Artifact panel | ✅ | ❌ | Code preview with iframe/Sandpack |
+| Message editing | ✅ | ❌ | Edit user message, re-send from that point |
 | Polling for async responses | ✅ | ❌ | |
 
 ## Files
@@ -97,7 +101,7 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 | Scroll-to-bottom button | ✅ | ❌ | Bottom-right, backdrop-blur, slide transition |
 | Hover-reveal action bars | ✅ | ❌ | Copy/edit/reload appear on message hover |
 | Welcome state personalization | ✅ | ❌ | Shows employee name and icon |
-| Suggestion chips | ✅ | ❌ | Pill-style chips in welcome state |
+| Suggestion chips | ❌ | ❌ | Removed during @assistant-ui migration |
 | Modal backdrop blur | ✅ | ❌ | backdrop-blur-sm on all dialogs |
 | Dialog entrance animation | ✅ | ❌ | fade-in + zoom-in on open |
 | Employee panel slide animation | ✅ | ❌ | AnimatePresence slide-in/out |

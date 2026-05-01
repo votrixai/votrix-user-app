@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { MSWProvider } from "@/components/msw-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="h-dvh overflow-hidden bg-background text-foreground antialiased">
-        {children}
+        <MSWProvider>{children}</MSWProvider>
       </body>
     </html>
   );

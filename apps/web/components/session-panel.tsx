@@ -121,7 +121,7 @@ export function SessionPanel({
 
   if (!employee) {
     return (
-      <div className="flex h-full w-[240px] shrink-0 flex-col items-center justify-center border-r border-border bg-background px-4">
+      <div className="flex h-full w-[280px] shrink-0 flex-col items-center justify-center border-r border-border bg-background px-4">
         <p className="text-center text-sm text-muted-foreground">
           Select an employee to view chats
         </p>
@@ -130,19 +130,36 @@ export function SessionPanel({
   }
 
   return (
-    <div className="flex h-full w-[240px] shrink-0 flex-col border-r border-border bg-background">
-      {/* Header */}
+    <div className="flex h-full w-[280px] shrink-0 flex-col border-r border-border bg-background">
+      {/* Header with new chat button */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
         <h2 className="min-w-0 truncate text-sm font-light text-foreground">
           {employee.display_name}
         </h2>
-        <button
-          onClick={onCollapse}
-          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Collapse panel"
-        >
-          <PanelLeftClose className="size-4" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={startNewChat}
+            disabled={creating}
+            className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            aria-label="New chat"
+          >
+            {creating ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <>
+                <Plus className="size-3.5" />
+                New Chat
+              </>
+            )}
+          </button>
+          <button
+            onClick={onCollapse}
+            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Collapse panel"
+          >
+            <PanelLeftClose className="size-4" />
+          </button>
+        </div>
       </div>
 
       {/* Session list */}
@@ -202,23 +219,6 @@ export function SessionPanel({
         )}
       </div>
 
-      {/* New chat button */}
-      <div className="border-t border-border px-3 py-2">
-        <button
-          onClick={startNewChat}
-          disabled={creating}
-          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-sm bg-primary text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          {creating ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <>
-              <Plus className="size-3.5" />
-              New Chat
-            </>
-          )}
-        </button>
-      </div>
 
       {/* Context menu */}
       {menu && (

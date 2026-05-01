@@ -39,6 +39,7 @@ export function EmployeeDetailPanel({
   const [loadingMemories, setLoadingMemories] = useState<Set<string>>(
     new Set(),
   );
+  const [deletingMemory, setDeletingMemory] = useState<Set<string>>(new Set());
   const [removing, startRemoving] = useTransition();
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [creating, startCreating] = useTransition();
@@ -92,6 +93,32 @@ export function EmployeeDetailPanel({
       });
     },
     [memories, selectedEmployee],
+  );
+
+  const deleteMemory = useCallback(
+    async (storeId: string, memoryId: string) => {
+      if (!selectedEmployee) return;
+      setDeletingMemory((prev) => new Set(prev).add(memoryId));
+      try {
+        const res = await fetch(
+          `/api/employees/${selectedEmployee.id}/memory-stores/${storeId}/memories/${memoryId}`,
+          { method: "DELETE" },
+        );
+        if (res.ok) {
+          setMemories((prev) => ({
+            ...prev,
+            [storeId]: (prev[storeId] ?? []).filter((m) => m.id !== memoryId),
+          }));
+        }
+      } finally {
+        setDeletingMemory((prev) => {
+          const next = new Set(prev);
+          next.delete(memoryId);
+          return next;
+        });
+      }
+    },
+    [selectedEmployee],
   );
 
   const handleRemove = () => {
@@ -263,11 +290,13 @@ export function EmployeeDetailPanel({
                       <span className="flex-1 truncate font-medium">
                         {store.name || "Unnamed store"}
                       </span>
-                      {isExpanded && storeMemories.length > 0 && (
+                      {isLoading ? (
+                        <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                      ) : storeMemories.length > 0 ? (
                         <span className="text-xs text-muted-foreground">
                           {storeMemories.length}
                         </span>
-                      )}
+                      ) : null}
                     </button>
 
                     {isExpanded && (
@@ -286,11 +315,23 @@ export function EmployeeDetailPanel({
                         {storeMemories.map((mem) => (
                           <div
                             key={mem.id}
-                            className="border-b border-border/50 py-2 last:border-0"
+                            className="group/mem flex items-start gap-2 border-b border-border/50 py-2 last:border-0"
                           >
-                            <p className="whitespace-pre-wrap text-xs text-foreground">
+                            <p className="flex-1 whitespace-pre-wrap text-xs text-foreground">
                               {mem.content}
                             </p>
+                            <button
+                              onClick={() => deleteMemory(store.id, mem.id)}
+                              disabled={deletingMemory.has(mem.id)}
+                              className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/mem:opacity-100 disabled:opacity-50"
+                              aria-label="Delete memory"
+                            >
+                              {deletingMemory.has(mem.id) ? (
+                                <Loader2 className="size-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3" />
+                              )}
+                            </button>
                           </div>
                         ))}
                       </div>
