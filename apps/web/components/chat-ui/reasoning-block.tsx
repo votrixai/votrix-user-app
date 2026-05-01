@@ -19,14 +19,12 @@ export function ReasoningBlock({ text, status }: ReasoningBlockProps) {
   const isRunning = status?.type === "running";
   const elapsed = useElapsedTimer(isRunning);
 
-  const [open, setOpen] = useState(isRunning);
+  const [open, setOpen] = useState(false);
   const userToggled = useRef(false);
 
   useEffect(() => {
     if (userToggled.current) return;
-    if (isRunning) {
-      setOpen(true);
-    } else {
+    if (!isRunning) {
       const timer = setTimeout(() => setOpen(false), 800);
       return () => clearTimeout(timer);
     }
