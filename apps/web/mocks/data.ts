@@ -131,6 +131,15 @@ export const MOCK_SESSIONS: SessionResponse[] = [
     agent_slug: "aria",
     created_at: "2024-04-25T09:30:00Z",
   },
+  {
+    id: "mock-session-6",
+    workspace_id: "ws-1",
+    title: "Tool Workflow Stress Test",
+    agent_blueprint_id: "bp-2",
+    blueprint_display_name: "Rex",
+    agent_slug: "rex",
+    created_at: "2024-04-24T11:15:00Z",
+  },
 ];
 
 const SESSION_MESSAGES: Record<string, UIMessage[]> = {
@@ -267,6 +276,105 @@ const SESSION_MESSAGES: Record<string, UIMessage[]> = {
         },
       ],
     },
+  ],
+
+  "mock-session-6": [
+    {
+      id: "s6-msg-1",
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text: "Run a full pipeline review and show me the intermediate work.",
+        },
+      ],
+    },
+    {
+      id: "s6-msg-2",
+      role: "assistant",
+      parts: [
+        {
+          type: "reasoning",
+          text: "I should verify the user's operating context, gather CRM data, inspect a workspace file, analyze stage velocity, and create a visual summary before giving the recommendation.",
+          state: "done",
+        },
+        {
+          type: "dynamic-tool",
+          toolName: "memory_search",
+          toolCallId: "s6-tool-1",
+          state: "output-available",
+          input: { query: "pipeline review format preferences", limit: 3 },
+          output: {
+            matches: [
+              "Lead with the recommendation.",
+              "Use tables for owner/date/action follow-ups.",
+              "Call out data freshness risks.",
+            ],
+          },
+        },
+        {
+          type: "dynamic-tool",
+          toolName: "query_crm",
+          toolCallId: "s6-tool-2",
+          state: "output-available",
+          input: { segment: "enterprise", quarter: "Q2", include_at_risk: true },
+          output: {
+            records: 34,
+            totalPipeline: "$2.4M",
+            weightedPipeline: "$890K",
+            atRiskDeals: ["Acme Corp", "GlobalTech", "Northstar Bank"],
+          },
+        },
+        {
+          type: "reasoning",
+          text: "The CRM data is enough to identify the risk cluster, but I need a second source for stage movement so the recommendation is not based only on static pipeline value.",
+          state: "done",
+        },
+        {
+          type: "dynamic-tool",
+          toolName: "read_workspace_file",
+          toolCallId: "s6-tool-3",
+          state: "output-available",
+          input: { path: "/Sales/weekly-stage-changes.csv", previewRows: 10 },
+          output: {
+            rows: 86,
+            columns: ["account", "previous_stage", "current_stage", "owner", "days_in_stage"],
+          },
+        },
+        {
+          type: "dynamic-tool",
+          toolName: "analyze_data",
+          toolCallId: "s6-tool-4",
+          state: "output-available",
+          input: {
+            dataset: "weekly-stage-changes",
+            metrics: ["stage_velocity", "slippage", "forecast_confidence"],
+          },
+          output: {
+            confidence: 0.91,
+            medianVelocityDays: 24,
+            slippedDeals: 5,
+            forecastRisk: "medium",
+          },
+        },
+        {
+          type: "dynamic-tool",
+          toolName: "__file_output__",
+          toolCallId: "s6-tool-5",
+          state: "output-available",
+          input: {
+            file_id: "mock-pipeline-chart",
+            filename: "pipeline-by-stage.png",
+            mime_type: "image/png",
+          },
+          output: "ready",
+        },
+        {
+          type: "text",
+          text: "Pipeline coverage is healthy, but the review should focus on **proposal-stage confidence** rather than a broad reset.\n\n| Priority | Owner | Action | Due |\n|---|---|---|---|\n| High | Sales | Refresh close confidence for Acme, GlobalTech, and Northstar | May 5 |\n| Medium | Product | Confirm roadmap dependencies for enterprise proposals | May 6 |\n| Medium | Finance | Re-check weighted forecast assumptions after CRM cleanup | May 7 |\n\nThe main risk is data freshness: five deals have recent slippage, so the forecast should not be finalized until owners update next steps.",
+        },
+      ],
+    } as UIMessage,
   ],
 };
 
