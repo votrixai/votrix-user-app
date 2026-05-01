@@ -31,8 +31,10 @@ import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 
 function mapToolState(state: string): "running" | "complete" | "incomplete" | "requires-action" {
-  if (state === "input-streaming" || state === "running") return "running";
-  if (state === "output-available" || state === "complete") return "complete";
+  // "input-available" / "partial-call" / "call" = tool is executing (no output yet)
+  if (state === "input-available" || state === "input-streaming" || state === "running" || state === "partial-call" || state === "call") return "running";
+  // "output-available" / "result" = tool finished
+  if (state === "output-available" || state === "result" || state === "complete") return "complete";
   if (state === "approval-requested" || state === "requires-action") return "requires-action";
   return "complete";
 }
@@ -208,7 +210,10 @@ const AssistantMessage: FC<{
   const { error } = useChatCtx();
   const hasContent = message.parts.some(
     (p) =>
-      (p.type === "text" && p.text.length > 0) || p.type === "reasoning",
+      (p.type === "text" && p.text.length > 0) ||
+      p.type === "reasoning" ||
+      p.type === "tool-invocation" ||
+      p.type.startsWith("tool-"),
   );
 
   return (

@@ -1,11 +1,32 @@
 import { http, HttpResponse } from "msw";
 import { createUIMessageStream, createUIMessageStreamResponse, generateId } from "ai";
-import { MOCK_BLUEPRINTS, MOCK_EMPLOYEES, MOCK_SESSIONS, getMockResponse } from "./data";
+import { MOCK_BLUEPRINTS, MOCK_EMPLOYEES, MOCK_SESSIONS } from "./data";
 
 let nextSessionCounter = 100;
 const dynamicSessions = [...MOCK_SESSIONS];
 
 type Writer = Parameters<Parameters<typeof createUIMessageStream>[0]["execute"]>[0]["writer"];
+
+type MockToolCall = {
+  toolName: string;
+  input: object;
+  output: unknown;
+};
+
+const randomInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+const sample = <T,>(items: readonly T[]): T =>
+  items[Math.floor(Math.random() * items.length)]!;
+
+const shuffle = <T,>(items: readonly T[]): T[] => {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = randomInt(0, i);
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+  }
+  return copy;
+};
 
 async function streamText(writer: Writer, text: string, speed = 40) {
   const id = generateId();
@@ -27,7 +48,13 @@ async function streamReasoning(writer: Writer, text: string) {
   writer.write({ type: "reasoning-end", id });
 }
 
-function emitToolCall(writer: Writer, toolName: string, input: object, output: string) {
+async function emitToolCall(
+  writer: Writer,
+  toolName: string,
+  input: object,
+  output: unknown,
+  duration = randomInt(350, 900),
+) {
   const id = generateId();
   writer.write({
     type: "tool-input-available",
@@ -36,6 +63,7 @@ function emitToolCall(writer: Writer, toolName: string, input: object, output: s
     input,
     providerExecuted: true,
   });
+  await new Promise<void>((r) => setTimeout(r, duration));
   writer.write({
     type: "tool-output-available",
     toolCallId: id,
@@ -59,6 +87,93 @@ function emitFileOutput(writer: Writer, fileId: string, filename: string, mimeTy
     output: "ready",
     providerExecuted: true,
   });
+}
+
+const toolCatalog: MockToolCall[] = [
+  {
+    toolName: "web_search",
+    input: { query: "enterprise AI agent platform buying criteria", recency: "30d" },
+    output: {
+      results: [
+        { title: "Enterprise AI evaluation checklist", relevance: 0.94 },
+        { title: "Agentic workflow adoption benchmarks", relevance: 0.89 },
+      ],
+    },
+  },
+  {
+    toolName: "query_crm",
+    input: { segment: "enterprise", stage: ["discovery", "proposal"], limit: 12 },
+    output: { records: 12, totalPipeline: "$1.84M", atRisk: 3, nextRenewal: "2026-05-14" },
+  },
+  {
+    toolName: "read_workspace_file",
+    input: { path: "/Sales/2026-Q2-pipeline.csv", previewRows: 8 },
+    output: { rows: 86, columns: ["account", "stage", "owner", "arr", "close_date"] },
+  },
+  {
+    toolName: "analyze_data",
+    input: { dataset: "pipeline", methods: ["cohort", "stage_velocity", "risk_score"] },
+    output: { confidence: 0.91, medianVelocityDays: 24, riskScore: "medium" },
+  },
+  {
+    toolName: "create_chart",
+    input: { chart: "stacked_bar", x: "stage", y: "weighted_arr", groupBy: "owner" },
+    output: { file_id: "mock-pipeline-chart", filename: "pipeline-by-stage.png", mime_type: "image/png" },
+  },
+  {
+    toolName: "calendar_lookup",
+    input: { attendees: ["sales", "product", "finance"], window: "next_10_business_days" },
+    output: { slotsFound: 5, bestSlot: "2026-05-06T15:00:00-04:00" },
+  },
+  {
+    toolName: "memory_search",
+    input: { query: "planning preferences and previous executive summary style", limit: 4 },
+    output: {
+      matches: [
+        "Prefers concise recommendations before supporting detail.",
+        "Uses owner/date/action tables for operating reviews.",
+      ],
+    },
+  },
+  {
+    toolName: "draft_document",
+    input: { template: "executive_brief", audience: "leadership", length: "one_page" },
+    output: { status: "drafted", sections: ["Summary", "Risks", "Decision Needed", "Next Steps"] },
+  },
+];
+
+const thinkingPrompts = [
+  "I need to turn this into a practical workflow rather than a generic answer. First I should gather current context, then validate the numbers, then decide whether the response needs a file or just a concise summary.",
+  "The request likely needs several checks before a recommendation. I should look for workspace context, inspect the relevant data source, compare it with recent signals, and only then summarize the trade-offs.",
+  "This is a multi-step task. I should avoid jumping straight to conclusions: identify the user's goal, retrieve supporting evidence, analyze the high-impact variables, and package the result in a form they can act on.",
+  "I have enough ambiguity that a short tool chain is useful. I'll search memory for preferences, pull the working data, run a focused analysis, and then write the answer around the highest-confidence findings.",
+];
+
+async function emitRandomToolWorkflow(writer: Writer, options?: { min?: number; max?: number }) {
+  const count = randomInt(options?.min ?? 3, options?.max ?? 6);
+  const calls = shuffle(toolCatalog).slice(0, count);
+
+  await streamReasoning(writer, sample(thinkingPrompts));
+  await streamText(writer, "I'll check the live context and then synthesize the answer.\n\n", 25);
+
+  for (const [index, call] of calls.entries()) {
+    if (index > 0 && Math.random() > 0.45) {
+      await streamReasoning(
+        writer,
+        sample([
+          "The previous result narrows the next step. I should verify the related source before presenting a recommendation.",
+          "This changes the shape of the answer slightly. I need one more check so the final summary is specific and defensible.",
+          "The data is directionally useful, but I should cross-check the next dependency before finalizing the plan.",
+        ]),
+      );
+    }
+
+    await emitToolCall(writer, call.toolName, call.input, call.output);
+  }
+
+  if (calls.some((call) => call.toolName === "create_chart")) {
+    emitFileOutput(writer, "mock-pipeline-chart", "pipeline-by-stage.png", "image/png");
+  }
 }
 
 type ResponseFn = (writer: Writer) => Promise<void>;
@@ -98,7 +213,7 @@ const responseVariants: ResponseFn[] = [
   async (writer) => {
     await streamText(writer, "Let me look that up for you...\n\n", 30);
 
-    emitToolCall(
+    await emitToolCall(
       writer,
       "web_search",
       { query: "latest React 19 features and improvements" },
@@ -110,9 +225,7 @@ const responseVariants: ResponseFn[] = [
       }),
     );
 
-    await new Promise<void>((r) => setTimeout(r, 500));
-
-    emitToolCall(
+    await emitToolCall(
       writer,
       "analyze_data",
       { source: "search_results", format: "summary" },
@@ -161,16 +274,14 @@ const responseVariants: ResponseFn[] = [
 
     await streamText(writer, "Running the analysis now...\n\n", 30);
 
-    emitToolCall(
+    await emitToolCall(
       writer,
       "fetch_dataset",
       { source: "analytics_db", query: "SELECT * FROM metrics WHERE date > '2024-01-01'" },
       JSON.stringify({ rows: 1247, columns: ["date", "users", "revenue", "churn"] }),
     );
 
-    await new Promise<void>((r) => setTimeout(r, 400));
-
-    emitToolCall(
+    await emitToolCall(
       writer,
       "run_analysis",
       { type: "trend_analysis", metrics: ["users", "revenue"] },
@@ -197,9 +308,51 @@ const responseVariants: ResponseFn[] = [
       50,
     );
   },
-];
 
-let responseIndex = 0;
+  // 8: Random multi-tool workflow with intermittent reasoning
+  async (writer) => {
+    await emitRandomToolWorkflow(writer, { min: 3, max: 6 });
+    await streamText(
+      writer,
+      "Here's the synthesized readout:\n\n### Recommendation\n\nPrioritize the enterprise pipeline review this week, because the strongest signal is concentrated in a small number of high-value accounts.\n\n### What I found\n\n- Pipeline coverage is healthy, but a few proposal-stage deals carry most of the forecast risk.\n- The best next step is an owner-by-owner review using stage velocity and close-date confidence.\n- A short leadership brief is enough for now; the full report can wait until the at-risk accounts are updated.\n\n### Next actions\n\n| Owner | Action | Due |\n|---|---|---|\n| Sales | Refresh proposal-stage close confidence | May 5 |\n| Product | Confirm roadmap commitments for top accounts | May 6 |\n| Finance | Validate weighted forecast assumptions | May 7 |\n\nI can turn this into a one-page operating review if you want to use it in the next meeting.",
+      22,
+    );
+  },
+
+  // 9: Deeper thinking-heavy workflow
+  async (writer) => {
+    await streamReasoning(
+      writer,
+      "This looks like it could become a planning answer, but the useful output depends on evidence. I should first check remembered preferences so the format matches the user, then inspect project data, then create a compact recommendation with open risks.",
+    );
+
+    await emitToolCall(
+      writer,
+      "memory_search",
+      { query: "preferred answer format, planning cadence, risk tolerance", limit: 5 },
+      {
+        matches: [
+          "Lead with a direct recommendation.",
+          "Use tables for owners and dates.",
+          "Call out assumptions explicitly when the source data is partial.",
+        ],
+      },
+    );
+
+    await streamReasoning(
+      writer,
+      "The user prefers a direct answer, so the final response should not over-explain. I still need operational context before making the recommendation.",
+    );
+
+    await emitRandomToolWorkflow(writer, { min: 4, max: 5 });
+
+    await streamText(
+      writer,
+      "I checked the relevant workspace context and the answer is: **run the review as a focused risk pass, not a broad planning reset**.\n\nThe highest-value work is concentrated around deal confidence, stage velocity, and roadmap commitments. I would use this agenda:\n\n1. Confirm the forecast delta account by account.\n2. Separate real blockers from stale CRM hygiene.\n3. Assign one owner for each at-risk commitment.\n4. Publish a concise follow-up with dates, owners, and unresolved assumptions.\n\nThe only assumption I would flag is data freshness: several records look decision-useful, but they should be refreshed before the final forecast is sent.",
+      24,
+    );
+  },
+];
 
 export const handlers = [
   http.get("/api/blueprints", () => {
@@ -271,8 +424,7 @@ export const handlers = [
   }),
 
   http.post("/api/chat", () => {
-    const variant = responseVariants[responseIndex % responseVariants.length]!;
-    responseIndex++;
+    const variant = sample(responseVariants);
 
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
