@@ -26,6 +26,7 @@ export interface SessionEventResponse {
 export interface SessionDetailResponse {
   id: string;
   workspace_id: string;
+  title?: string | null;
   agent_blueprint_id: string | null;
   created_at: string;
   events: SessionEventResponse[];
