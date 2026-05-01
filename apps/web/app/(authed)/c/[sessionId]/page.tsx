@@ -21,7 +21,7 @@ export default async function SessionPage({
       <Chat
         initialMessages={getMockMessages(sessionId)}
         sessionId={sessionId}
-        employeeName={emp?.display_name ?? session?.blueprint_display_name}
+        employeeName={emp?.display_name ?? session?.blueprint_display_name ?? undefined}
         sessionTitle={session?.title ?? undefined}
       />
     );
