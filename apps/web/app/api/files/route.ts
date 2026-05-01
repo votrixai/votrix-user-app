@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { backendFetch } from "@/lib/backend";
 
-const BACKEND_URL = process.env.BACKEND_URL!;
-
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -13,9 +11,8 @@ export async function POST(request: Request) {
 
   // Forward FormData as-is — do NOT set Content-Type, fetch sets the multipart boundary
   const formData = await request.formData();
-  const res = await fetch(`${BACKEND_URL}/files`, {
+  const res = await backendFetch("/files", {
     method: "POST",
-    headers: { Authorization: `Bearer ${session.access_token}` },
     body: formData,
   });
 
