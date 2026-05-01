@@ -51,14 +51,12 @@ export const ToolCall = memo(function ToolCall({
 
   const elapsed = useElapsedTimer(isRunning);
 
-  const [open, setOpen] = useState(isRunning);
+  const [open, setOpen] = useState(false);
   const userToggled = useRef(false);
 
   useEffect(() => {
     if (userToggled.current) return;
-    if (isRunning) {
-      setOpen(true);
-    } else {
+    if (!isRunning) {
       const timer = setTimeout(() => setOpen(false), 600);
       return () => clearTimeout(timer);
     }

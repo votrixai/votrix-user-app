@@ -131,6 +131,10 @@ export const Thread: FC = () => {
   const { messages, status, employeeName } = useChatCtx();
   const { scrollRef, isAtBottom, scrollToBottom } = useAutoScroll();
   const isEmpty = messages.length === 0;
+  const lastMessage = messages.at(-1);
+  const isAwaitingAssistant =
+    (status === "submitted" || status === "streaming") &&
+    lastMessage?.role === "user";
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -153,6 +157,7 @@ export const Thread: FC = () => {
               isLast={i === messages.length - 1}
             />
           ))}
+          {isAwaitingAssistant && <PendingAssistantMessage />}
         </div>
       </div>
 
@@ -198,6 +203,19 @@ const Message: FC<{
   return null;
 };
 
+const PendingAssistantMessage: FC = () => {
+  return (
+    <div
+      className="group/message relative mx-auto w-full max-w-[52rem] pt-6 pb-3 px-0"
+      data-role="assistant"
+    >
+      <div className="break-words text-foreground leading-[1.8]">
+        <ThinkingIndicator className="bg-background" />
+      </div>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Assistant message
 // ---------------------------------------------------------------------------
@@ -208,13 +226,6 @@ const AssistantMessage: FC<{
   isRunning: boolean;
 }> = ({ message, isLast, isRunning }) => {
   const { error } = useChatCtx();
-  const hasContent = message.parts.some(
-    (p) =>
-      (p.type === "text" && p.text.length > 0) ||
-      p.type === "reasoning" ||
-      p.type === "tool-invocation" ||
-      p.type.startsWith("tool-"),
-  );
 
   return (
     <div
@@ -222,8 +233,6 @@ const AssistantMessage: FC<{
       data-role="assistant"
     >
       <div className="break-words text-foreground leading-[1.8]">
-        {isRunning && !hasContent && <ThinkingIndicator />}
-
         {message.parts.map((part, i) => {
           if (part.type === "text") {
             return (
@@ -272,6 +281,10 @@ const AssistantMessage: FC<{
           }
           return null;
         })}
+
+        {isRunning && (
+          <ThinkingIndicator className="sticky bottom-0 z-10 bg-background/95 backdrop-blur-sm" />
+        )}
 
         {isLast && error && (
           <div className="mt-2 rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm">
@@ -538,23 +551,9 @@ const UserAttachmentChip: FC<{ attachment: any }> = ({ attachment }) => {
 // Thinking indicator — LobeHub loading dots (1.2s cycle, 0.15s stagger)
 // ---------------------------------------------------------------------------
 
-const ThinkingIndicator: FC = () => {
-  const [elapsed, setElapsed] = useState(0);
-  const [showElapsed, setShowElapsed] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowElapsed(true), 2100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!showElapsed) return;
-    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(interval);
-  }, [showElapsed]);
-
+const ThinkingIndicator: FC<{ className?: string }> = ({ className }) => {
   return (
-    <div className="flex items-center gap-2 py-1 text-muted-foreground text-sm">
+    <div className={cn("flex items-center gap-2 py-1 text-muted-foreground text-sm", className)}>
       <span className="flex items-center gap-1">
         <span className="size-1.5 rounded-full bg-primary animate-loading-dot" />
         <span
@@ -566,9 +565,7 @@ const ThinkingIndicator: FC = () => {
           style={{ animationDelay: "0.3s" }}
         />
       </span>
-      <span>
-        Thinking{showElapsed ? `... (${elapsed}s)` : "..."}
-      </span>
+      <span>thinking...</span>
     </div>
   );
 };
