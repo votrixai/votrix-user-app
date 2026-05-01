@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { EmployeePanelProvider } from "@/lib/employee-panel-context";
 import { SessionRefreshProvider } from "@/lib/session-refresh-context";
@@ -56,9 +56,11 @@ export function AuthedShell({
       .finally(() => setLoading(false));
   }, []);
 
-  // Auto-select employee based on active session or most recent chat
+  // Initial employee selection — runs once when data loads
+  const hasAutoSelected = useRef(false);
   useEffect(() => {
-    if (employees.length === 0) return;
+    if (employees.length === 0 || hasAutoSelected.current) return;
+    hasAutoSelected.current = true;
 
     if (activeSessionId) {
       const session = sessions.find((s) => s.id === activeSessionId);
@@ -73,22 +75,35 @@ export function AuthedShell({
       }
     }
 
-    // Fall back to employee with most recent chat, or first employee
-    if (!selectedEmployeeId || !employees.find((e) => e.id === selectedEmployeeId)) {
-      const sorted = [...employees].sort((a, b) => {
-        const aLatest = sessions
-          .filter((s) => s.agent_blueprint_id === a.agent_blueprint_id)
-          .sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())[0];
-        const bLatest = sessions
-          .filter((s) => s.agent_blueprint_id === b.agent_blueprint_id)
-          .sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())[0];
-        const aTime = aLatest ? new Date(aLatest.created_at).getTime() : new Date(a.created_at).getTime();
-        const bTime = bLatest ? new Date(bLatest.created_at).getTime() : new Date(b.created_at).getTime();
-        return bTime - aTime;
-      });
-      setSelectedEmployeeId(sorted[0]?.id ?? null);
+    const sorted = [...employees].sort((a, b) => {
+      const aLatest = sessions
+        .filter((s) => s.agent_blueprint_id === a.agent_blueprint_id)
+        .sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())[0];
+      const bLatest = sessions
+        .filter((s) => s.agent_blueprint_id === b.agent_blueprint_id)
+        .sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())[0];
+      const aTime = aLatest ? new Date(aLatest.created_at).getTime() : new Date(a.created_at).getTime();
+      const bTime = bLatest ? new Date(bLatest.created_at).getTime() : new Date(b.created_at).getTime();
+      return bTime - aTime;
+    });
+    setSelectedEmployeeId(sorted[0]?.id ?? null);
+  }, [employees, sessions, activeSessionId]);
+
+  // Sync employee selection when URL changes to a different session
+  const prevSessionId = useRef(activeSessionId);
+  useEffect(() => {
+    if (activeSessionId === prevSessionId.current) return;
+    prevSessionId.current = activeSessionId;
+    if (!activeSessionId || employees.length === 0) return;
+
+    const session = sessions.find((s) => s.id === activeSessionId);
+    if (session?.agent_blueprint_id) {
+      const emp = employees.find(
+        (e) => e.agent_blueprint_id === session.agent_blueprint_id,
+      );
+      if (emp) setSelectedEmployeeId(emp.id);
     }
-  }, [employees, sessions, activeSessionId, selectedEmployeeId]);
+  }, [activeSessionId, employees, sessions]);
 
   const selectedEmployee = useMemo(
     () => employees.find((e) => e.id === selectedEmployeeId) ?? null,
@@ -155,6 +170,7 @@ export function AuthedShell({
 
               {/* Main content */}
               <div className="flex-1 overflow-hidden">{children}</div>
+
               <EmployeeDetailPanel sessions={sessions} />
             </div>
           </EmployeePanelProvider>

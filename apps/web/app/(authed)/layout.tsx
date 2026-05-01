@@ -6,6 +6,14 @@ export default async function AuthedLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (process.env.NEXT_PUBLIC_MOCK === "true") {
+    return (
+      <AuthedShell email="mock@votrix.ai" userId="mock-user-1">
+        {children}
+      </AuthedShell>
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

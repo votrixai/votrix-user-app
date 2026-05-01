@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  if (process.env.NEXT_PUBLIC_MOCK === "true") {
+    const { pathname } = request.nextUrl;
+    if (pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
