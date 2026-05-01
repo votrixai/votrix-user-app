@@ -17,5 +17,13 @@
     "mob": "npm run native --workspace=apps/mobile",
     "ios": "npm run ios --workspace=apps/mobile",
     "android": "npm run android --workspace=apps/mobile"
+  },
+  "devDependencies": {
+    "msw": "^2.14.2"
+  },
+  "msw": {
+    "workerDirectory": [
+      "apps/web/public"
+    ]
   }
 }

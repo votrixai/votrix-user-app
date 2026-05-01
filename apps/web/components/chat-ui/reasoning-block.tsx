@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Brain, Loader2 } from "lucide-react";
-import { useMessagePartReasoning } from "@assistant-ui/react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,9 +10,13 @@ import {
 import { useElapsedTimer } from "@/lib/use-elapsed-timer";
 import { cn } from "@/lib/utils";
 
-export function ReasoningBlock() {
-  const part = useMessagePartReasoning();
-  const isRunning = part.status?.type === "running";
+interface ReasoningBlockProps {
+  text: string;
+  status?: { type: string };
+}
+
+export function ReasoningBlock({ text, status }: ReasoningBlockProps) {
+  const isRunning = status?.type === "running";
   const elapsed = useElapsedTimer(isRunning);
 
   const [open, setOpen] = useState(isRunning);
@@ -51,11 +54,9 @@ export function ReasoningBlock() {
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div
-          className="scroll-shadow-y max-h-[min(40vh,320px)] overflow-y-auto border-t border-border px-3 py-2"
-        >
+        <div className="scroll-shadow-y max-h-[min(40vh,320px)] overflow-y-auto border-t border-border px-3 py-2">
           <p className="whitespace-pre-wrap text-sm italic text-muted-foreground leading-relaxed">
-            {part.text}
+            {text}
           </p>
         </div>
       </CollapsibleContent>
