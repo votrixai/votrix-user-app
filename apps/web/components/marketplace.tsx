@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bot, Check, Loader2, Search, Sparkles } from "lucide-react";
+import { useEmployeeRefresh } from "@/lib/employee-refresh-context";
+import { useSessionRefresh } from "@/lib/session-refresh-context";
 import { useToast } from "@/lib/toast-context";
 import type { AgentBlueprintResponse } from "@votrix/shared";
 
@@ -13,6 +15,8 @@ export default function Marketplace({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshEmployees } = useEmployeeRefresh();
+  const { refreshSessions } = useSessionRefresh();
   const [hiring, startHiring] = useTransition();
   const [selected, setSelected] = useState<string | null>(null);
   const [hiredIds, setHiredIds] = useState<Set<string>>(
@@ -63,13 +67,17 @@ export default function Marketplace({
         );
         setSelected(null);
         setHiredIds((prev) => new Set(prev).add(blueprint.id));
-        router.refresh();
+        await refreshEmployees(blueprint.id);
         return;
       }
       const session = await sessionRes.json();
       setSelected(null);
+      setHiredIds((prev) => new Set(prev).add(blueprint.id));
+      await Promise.all([
+        refreshEmployees(blueprint.id),
+        refreshSessions(),
+      ]);
       router.push(`/c/${session.id}`);
-      router.refresh();
     });
   };
 
@@ -89,8 +97,8 @@ export default function Marketplace({
         }
         const session = await res.json();
         setSelected(null);
+        refreshSessions();
         router.push(`/c/${session.id}`);
-        router.refresh();
       } catch {
         toast("Could not start chat. Check your connection.");
         setSelected(null);

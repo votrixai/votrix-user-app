@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { EmployeePanelProvider } from "@/lib/employee-panel-context";
+import { EmployeeRefreshProvider } from "@/lib/employee-refresh-context";
 import { SessionRefreshProvider } from "@/lib/session-refresh-context";
 import { ToastProvider } from "@/lib/toast-context";
 import {
@@ -117,9 +118,30 @@ export function AuthedShell({
     } catch {}
   }, []);
 
+  const refreshEmployees = useCallback(async (selectedBlueprintId?: string) => {
+    try {
+      const res = await fetch("/api/employees");
+      if (!res.ok) return;
+
+      const nextEmployees = (await res.json()) as AgentEmployeeResponse[];
+      setEmployees(nextEmployees);
+
+      if (selectedBlueprintId) {
+        const hired = nextEmployees.find(
+          (e) => e.agent_blueprint_id === selectedBlueprintId,
+        );
+        if (hired) setSelectedEmployeeId(hired.id);
+      }
+    } catch {}
+  }, []);
+
   const sessionRefreshValue = useMemo(
     () => ({ refreshSessions }),
     [refreshSessions],
+  );
+  const employeeRefreshValue = useMemo(
+    () => ({ refreshEmployees }),
+    [refreshEmployees],
   );
 
   const togglePanelCollapsed = useCallback(() => {
@@ -136,44 +158,46 @@ export function AuthedShell({
     <ToastProvider>
       <CommandPaletteContext.Provider value={cmdPalette}>
         <SessionRefreshProvider value={sessionRefreshValue}>
-          <EmployeePanelProvider>
-            <div className="flex h-dvh overflow-hidden">
-              {/* Employee rail */}
-              <EmployeeRail
-                email={email}
-                employees={employees}
-                selectedEmployeeId={selectedEmployeeId}
-                onSelectEmployee={setSelectedEmployeeId}
-                loading={loading}
-              />
-
-              {/* Session panel */}
-              {showSessionPanel && (
-                <SessionPanel
-                  employee={selectedEmployee}
-                  sessions={sessions}
-                  onSessionsChange={setSessions}
-                  onCollapse={togglePanelCollapsed}
+          <EmployeeRefreshProvider value={employeeRefreshValue}>
+            <EmployeePanelProvider>
+              <div className="flex h-dvh overflow-hidden">
+                {/* Employee rail */}
+                <EmployeeRail
+                  email={email}
+                  employees={employees}
+                  selectedEmployeeId={selectedEmployeeId}
+                  onSelectEmployee={setSelectedEmployeeId}
+                  loading={loading}
                 />
-              )}
 
-              {/* Expand session panel toggle */}
-              {employees.length > 0 && panelCollapsed && (
-                <button
-                  onClick={togglePanelCollapsed}
-                  className="flex h-full w-6 shrink-0 items-center justify-center border-r border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="Expand session panel"
-                >
-                  <PanelLeftOpen className="size-3.5" />
-                </button>
-              )}
+                {/* Session panel */}
+                {showSessionPanel && (
+                  <SessionPanel
+                    employee={selectedEmployee}
+                    sessions={sessions}
+                    onSessionsChange={setSessions}
+                    onCollapse={togglePanelCollapsed}
+                  />
+                )}
 
-              {/* Main content */}
-              <div className="flex-1 overflow-hidden">{children}</div>
+                {/* Expand session panel toggle */}
+                {employees.length > 0 && panelCollapsed && (
+                  <button
+                    onClick={togglePanelCollapsed}
+                    className="flex h-full w-6 shrink-0 items-center justify-center border-r border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Expand session panel"
+                  >
+                    <PanelLeftOpen className="size-3.5" />
+                  </button>
+                )}
 
-              <EmployeeDetailPanel sessions={sessions} />
-            </div>
-          </EmployeePanelProvider>
+                {/* Main content */}
+                <div className="flex-1 overflow-hidden">{children}</div>
+
+                <EmployeeDetailPanel sessions={sessions} />
+              </div>
+            </EmployeePanelProvider>
+          </EmployeeRefreshProvider>
         </SessionRefreshProvider>
         <CommandPalette employees={employees} sessions={sessions} />
         <Toaster />
