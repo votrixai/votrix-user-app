@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Bot,
@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEmployeePanel } from "@/lib/employee-panel-context";
+import { useEmployeeRefresh } from "@/lib/employee-refresh-context";
 import { useSessionRefresh } from "@/lib/session-refresh-context";
 import { useToast } from "@/lib/toast-context";
 import type {
@@ -27,7 +28,10 @@ export function EmployeeDetailPanel({
   sessions: SessionResponse[];
 }) {
   const router = useRouter();
+  const params = useParams<{ sessionId?: string }>();
+  const activeSessionId = params?.sessionId;
   const { selectedEmployee, closePanel } = useEmployeePanel();
+  const { refreshEmployees } = useEmployeeRefresh();
   const { toast } = useToast();
   const { refreshSessions } = useSessionRefresh();
   const [memoryStores, setMemoryStores] = useState<MemoryStoreResponse[]>([]);
@@ -123,9 +127,16 @@ export function EmployeeDetailPanel({
 
   const handleRemove = () => {
     if (!selectedEmployee) return;
+    const removedEmployee = selectedEmployee;
+    const activeSession = activeSessionId
+      ? sessions.find((s) => s.id === activeSessionId)
+      : null;
+    const shouldResetChat =
+      activeSession?.agent_blueprint_id === removedEmployee.agent_blueprint_id;
+
     startRemoving(async () => {
       try {
-        const res = await fetch(`/api/employees/${selectedEmployee.id}`, {
+        const res = await fetch(`/api/employees/${removedEmployee.id}`, {
           method: "DELETE",
         });
         if (!res.ok) {
@@ -135,8 +146,12 @@ export function EmployeeDetailPanel({
         }
         setShowRemoveConfirm(false);
         closePanel();
-        router.refresh();
-        window.location.reload();
+        await Promise.all([refreshEmployees(), refreshSessions()]);
+        if (shouldResetChat) {
+          router.push("/");
+        } else {
+          router.refresh();
+        }
       } catch {
         toast("Could not remove employee. Check your connection.");
         setShowRemoveConfirm(false);

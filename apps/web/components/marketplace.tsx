@@ -37,7 +37,7 @@ export default function Marketplace({
     setSelected(blueprint.slug);
     setErrors((prev) => ({ ...prev, [blueprint.slug]: "" }));
     startHiring(async () => {
-      const hireRes = await fetch("/api/employees/hire", {
+      const hireRes = await fetch("/api/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agent_slug: blueprint.slug }),
