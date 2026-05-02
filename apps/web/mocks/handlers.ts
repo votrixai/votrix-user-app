@@ -452,11 +452,11 @@ export const handlers = [
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
       <rect width="400" height="300" fill="#f8fafc" rx="8"/>
       <text x="200" y="150" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#64748d">Mock Chart Image</text>
-      <rect x="60" y="180" width="40" height="80" fill="#533afd" rx="4"/>
-      <rect x="120" y="140" width="40" height="120" fill="#533afd" opacity="0.8" rx="4"/>
-      <rect x="180" y="120" width="40" height="140" fill="#533afd" opacity="0.7" rx="4"/>
-      <rect x="240" y="90" width="40" height="170" fill="#533afd" opacity="0.6" rx="4"/>
-      <rect x="300" y="60" width="40" height="200" fill="#533afd" opacity="0.5" rx="4"/>
+      <rect x="60" y="180" width="40" height="80" fill="#171717" rx="4"/>
+      <rect x="120" y="140" width="40" height="120" fill="#171717" opacity="0.8" rx="4"/>
+      <rect x="180" y="120" width="40" height="140" fill="#171717" opacity="0.7" rx="4"/>
+      <rect x="240" y="90" width="40" height="170" fill="#171717" opacity="0.6" rx="4"/>
+      <rect x="300" y="60" width="40" height="200" fill="#171717" opacity="0.5" rx="4"/>
     </svg>`;
     return new HttpResponse(svg, {
       headers: { "Content-Type": "image/svg+xml" },

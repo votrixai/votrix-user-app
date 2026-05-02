@@ -102,21 +102,28 @@ function useAutoScroll() {
 // ---------------------------------------------------------------------------
 
 const ThreadHeader: FC = () => {
-  const { sessionTitle } = useChatCtx();
+  const { employeeName, sessionTitle } = useChatCtx();
 
-  if (!sessionTitle) return null;
+  if (!employeeName && !sessionTitle) return null;
 
   return (
     <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
           <Bot className="size-4 text-muted-foreground" />
         </div>
-        <span className="min-w-0 truncate text-sm font-medium text-foreground">
-          {sessionTitle}
-        </span>
+        {employeeName && (
+          <span className="shrink-0 text-sm font-semibold text-foreground">
+            {employeeName}
+          </span>
+        )}
+        {sessionTitle && (
+          <span className="min-w-0 truncate text-sm text-muted-foreground">
+            {sessionTitle}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-1 text-muted-foreground">
+      <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
         <ExportButton />
       </div>
     </div>
@@ -138,9 +145,6 @@ export const Thread: FC = () => {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* Header */}
-      <ThreadHeader />
-
       {/* Scrollable message area */}
       <div
         ref={scrollRef}

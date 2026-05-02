@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npm run web",
     "web": "npm --workspace=apps/web run web",
     "build:web": "npm run build --workspace=apps/web",
     "lint:web": "npm run lint --workspace=apps/web",

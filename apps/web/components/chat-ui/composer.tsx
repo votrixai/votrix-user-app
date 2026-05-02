@@ -140,7 +140,7 @@ export const Composer: FC = () => {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="relative flex w-full flex-col">
-      <div className="flex w-full flex-col rounded-lg border border-border bg-background shadow-[0_3px_10px_-4px_rgba(0,0,0,0.08),0_4px_6px_-2px_rgba(0,0,0,0.05)] transition-all duration-200 ease-out focus-within:border-primary focus-within:shadow-[0_0_0_2px_rgba(83,58,253,0.15)] dark:shadow-[0_3px_10px_-4px_rgba(0,0,0,0.2),0_4px_6px_-2px_rgba(0,0,0,0.1)]">
+      <div className="flex w-full flex-col rounded-lg border border-border bg-background shadow-[0_3px_10px_-4px_rgba(0,0,0,0.08),0_4px_6px_-2px_rgba(0,0,0,0.05)] transition-all duration-200 ease-out focus-within:border-primary focus-within:shadow-[0_0_0_2px_rgba(0,0,0,0.08)] dark:shadow-[0_3px_10px_-4px_rgba(0,0,0,0.2),0_4px_6px_-2px_rgba(0,0,0,0.1)]">
         {/* Textarea zone */}
         <div className="px-3 pt-2 pb-2">
           {attachments.length > 0 && (
