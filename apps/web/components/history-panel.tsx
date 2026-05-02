@@ -1,33 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Trash2, X } from "lucide-react";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
 import { useToast } from "@/lib/toast-context";
 import type { AgentEmployeeResponse, SessionResponse } from "@votrix/shared";
 
 export function HistoryPanel({
   employee,
-  sessions,
   onClose,
 }: {
   employee: AgentEmployeeResponse;
-  sessions: SessionResponse[];
   onClose: () => void;
 }) {
   const router = useRouter();
   const params = useParams<{ sessionId?: string }>();
   const activeId = params?.sessionId;
   const { toast } = useToast();
-  const { refreshSessions } = useSessionRefresh();
+
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<{ id: string; title: string } | null>(null);
 
-  const employeeSessions = sessions
-    .filter((s) => s.agent_blueprint_id === employee.agent_blueprint_id)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  useEffect(() => {
+    setLoadingSessions(true);
+    fetch("/api/sessions")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((all: SessionResponse[]) => {
+        setSessions(
+          all
+            .filter((s) => s.agent_blueprint_id === employee.agent_blueprint_id)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+        );
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSessions(false));
+  }, [employee.agent_blueprint_id]);
 
   const labelFor = (s: SessionResponse) => {
     if (s.title) return s.title;
@@ -42,7 +52,7 @@ export function HistoryPanel({
     try {
       const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
       if (res.ok) {
-        refreshSessions();
+        setSessions((prev) => prev.filter((s) => s.id !== id));
       } else {
         toast("Could not delete session. Please try again.");
       }
@@ -73,13 +83,17 @@ export function HistoryPanel({
 
       {/* Session list */}
       <div className="flex-1 overflow-y-auto px-2 py-1.5">
-        {employeeSessions.length === 0 ? (
+        {loadingSessions ? (
+          <div className="flex h-20 items-center justify-center">
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : sessions.length === 0 ? (
           <div className="flex h-20 items-center justify-center text-xs text-muted-foreground">
             No sessions yet
           </div>
         ) : (
           <ul className="space-y-0.5">
-            {employeeSessions.map((s) => (
+            {sessions.map((s) => (
               <li
                 key={s.id}
                 className="group/session"
@@ -101,7 +115,7 @@ export function HistoryPanel({
                     <Loader2 className="size-3 shrink-0 animate-spin" />
                   )}
                   <Link
-                    href={`/c/${s.id}`}
+                    href={`/chat/${s.id}`}
                     className="min-w-0 flex-1 truncate text-xs"
                     title={labelFor(s)}
                   >

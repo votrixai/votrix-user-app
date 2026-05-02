@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { useEmployeeRefresh } from "@/lib/employee-refresh-context";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
 import { useToast } from "@/lib/toast-context";
 import type { AgentBlueprintResponse } from "@votrix/shared";
 
@@ -35,7 +34,6 @@ export default function Marketplace({
   const router = useRouter();
   const { toast } = useToast();
   const { refreshEmployees } = useEmployeeRefresh();
-  const { refreshSessions } = useSessionRefresh();
   const [hiring, startHiring] = useTransition();
   const [selected, setSelected] = useState<string | null>(null);
   const [hiredIds, setHiredIds] = useState<Set<string>>(
@@ -75,53 +73,10 @@ export default function Marketplace({
         return;
       }
 
-      const sessionRes = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_slug: blueprint.slug }),
-      });
-      if (!sessionRes.ok) {
-        toast(
-          "Hired successfully, but could not start chat. Select them to start chatting.",
-        );
-        setSelected(null);
-        setHiredIds((prev) => new Set(prev).add(blueprint.id));
-        await refreshEmployees(blueprint.id);
-        return;
-      }
-      const session = await sessionRes.json();
       setSelected(null);
       setHiredIds((prev) => new Set(prev).add(blueprint.id));
-      await Promise.all([
-        refreshEmployees(blueprint.id),
-        refreshSessions(),
-      ]);
-      router.push(`/c/${session.id}`);
-    });
-  };
-
-  const startChat = (blueprint: AgentBlueprintResponse) => {
-    setSelected(blueprint.slug);
-    startHiring(async () => {
-      try {
-        const res = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_slug: blueprint.slug }),
-        });
-        if (!res.ok) {
-          toast("Could not start chat. Please try again.");
-          setSelected(null);
-          return;
-        }
-        const session = await res.json();
-        setSelected(null);
-        refreshSessions();
-        router.push(`/c/${session.id}`);
-      } catch {
-        toast("Could not start chat. Check your connection.");
-        setSelected(null);
-      }
+      await refreshEmployees(blueprint.id);
+      router.push("/");
     });
   };
 
@@ -209,7 +164,7 @@ export default function Marketplace({
                         Free
                       </span>
                       <button
-                        onClick={() => (isHired ? startChat(bp) : hire(bp))}
+                        onClick={() => !isHired && hire(bp)}
                         disabled={hiring || isHired}
                         className={`rounded-[7px] px-4 py-1.5 text-[12.5px] font-medium transition-colors disabled:opacity-100 ${
                           isHired

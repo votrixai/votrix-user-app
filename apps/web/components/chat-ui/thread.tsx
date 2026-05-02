@@ -155,7 +155,7 @@ export const Thread: FC = () => {
         <div className="mx-auto w-full max-w-[52rem]">
           {messages.map((msg, i) => (
             <Message
-              key={msg.id}
+              key={`${msg.id}-${i}`}
               message={msg}
               index={i}
               isLast={i === messages.length - 1}
@@ -519,16 +519,16 @@ const FileDownloadCard: FC<{ input: Record<string, unknown> }> = ({
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const UserAttachmentChip: FC<{ attachment: any }> = ({ attachment }) => {
-  const filename: string = attachment?.name ?? "Attachment";
-  const contentType: string = attachment?.contentType ?? "";
-  const isImage =
-    attachment?.type === "image" || contentType.startsWith("image/");
+  // FileUIPart uses `filename` and `mediaType`; fall back to legacy field names
+  const filename: string = attachment?.filename ?? attachment?.name ?? "Attachment";
+  const mediaType: string = attachment?.mediaType ?? attachment?.contentType ?? "";
+  const isImage = mediaType.startsWith("image/");
   const ext = filename.includes(".")
     ? filename.split(".").pop()!.toUpperCase()
     : "";
   const subtitle = isImage
     ? "Image"
-    : ext || contentType.split("/")[1]?.toUpperCase() || "File";
+    : ext || mediaType.split("/")[1]?.toUpperCase() || "File";
 
   return (
     <div className="flex max-w-[18rem] items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">

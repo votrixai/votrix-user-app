@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { FileUIPart } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
@@ -12,7 +13,7 @@ import { ArtifactProvider, useArtifact } from "@/lib/artifact-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AttachmentContext, type PendingAttachment } from "@/lib/attachment-context";
 import { ChatContext, type ChatContextValue } from "@/lib/chat-context";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
+import { useShellData } from "@/lib/shell-data-context";
 import { buildInitialMessages, isAwaitingAssistantResponse } from "@/lib/session-messages";
 import type { SessionDetailResponse, SessionFileResponse } from "@votrix/shared";
 import type { UIMessage } from "ai";
@@ -22,35 +23,54 @@ export default function Chat({
   sessionId,
   sessionFiles = [],
   awaitingResponse = false,
-  employeeName,
-  sessionTitle,
+  agentBlueprintId,
+  sessionTitle: sessionTitleProp,
+  // legacy prop kept for mock mode
+  employeeName: employeeNameProp,
 }: {
   initialMessages: UIMessage[];
   sessionId: string;
   sessionFiles?: SessionFileResponse[];
   awaitingResponse?: boolean;
-  employeeName?: string;
+  agentBlueprintId?: string;
   sessionTitle?: string;
+  employeeName?: string;
 }) {
   const router = useRouter();
-  const { refreshSessions } = useSessionRefresh();
+  const searchParams = useSearchParams();
+  const { employees } = useShellData();
+
+  const employeeName = employeeNameProp ?? (
+    agentBlueprintId
+      ? employees.find((e) => e.agent_blueprint_id === agentBlueprintId)?.display_name
+      : undefined
+  );
+  const sessionTitle = sessionTitleProp ?? employeeName ?? `Chat ${sessionId.slice(0, 8)}`;
 
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(awaitingResponse);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [requestAttachments, setRequestAttachments] = useState<PendingAttachment[]>([]);
   const [filesOpen, setFilesOpen] = useState(false);
 
-  const addAttachment = useCallback((att: PendingAttachment) => {
-    const next = [...requestAttachments, att];
-    setAttachments(next);
-    setRequestAttachments(next);
+  // useChat stores transport in a ref and never re-reads it after mount.
+  // Use a ref here so the closure in prepareSendMessagesRequest always sees
+  // the latest attachments without needing to recreate the transport object.
+  const requestAttachmentsRef = useRef<PendingAttachment[]>([]);
+  useEffect(() => {
+    requestAttachmentsRef.current = requestAttachments;
   }, [requestAttachments]);
 
-  const removeAttachment = useCallback((fileId: string) => {
-    const next = requestAttachments.filter((a) => a.file_id !== fileId);
+  const addAttachment = useCallback((att: PendingAttachment) => {
+    const next = [...requestAttachmentsRef.current, att];
     setAttachments(next);
     setRequestAttachments(next);
-  }, [requestAttachments]);
+  }, []);
+
+  const removeAttachment = useCallback((fileId: string) => {
+    const next = requestAttachmentsRef.current.filter((a) => a.file_id !== fileId);
+    setAttachments(next);
+    setRequestAttachments(next);
+  }, []);
 
   const clearAttachments = useCallback(() => {
     setAttachments([]);
@@ -74,7 +94,7 @@ export default function Chat({
             trigger: options.trigger,
             messageId: options.messageId,
             metadata: options.requestMetadata,
-            attachments: requestAttachments.map(({ file_id, content_type, filename }) => ({
+            attachments: requestAttachmentsRef.current.map(({ file_id, content_type, filename }) => ({
               file_id,
               content_type,
               filename,
@@ -82,17 +102,12 @@ export default function Chat({
           },
         }),
       }),
-    [requestAttachments, sessionId],
+    [sessionId],
   );
 
-  const sessionsRefreshed = useRef(false);
   const onFinish = useCallback(() => {
     clearAttachments();
-    if (sessionsRefreshed.current) return;
-    sessionsRefreshed.current = true;
-    refreshSessions();
-    setTimeout(() => refreshSessions(), 4000);
-  }, [clearAttachments, refreshSessions]);
+  }, [clearAttachments]);
 
   const chat = useChat({
     transport,
@@ -100,6 +115,26 @@ export default function Chat({
     id: sessionId,
     onFinish,
   });
+
+  // Auto-send initial message from ?q= (home page). sessionStorage dedupes React Strict Mode
+  // double-mount and avoids duplicate /api/chat runs for the same session + prompt.
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (!q?.trim()) return;
+    const dedupeKey = `votrix:auto-q:${sessionId}:${q}`;
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(dedupeKey)) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("q");
+      window.history.replaceState(null, "", url.toString());
+      return;
+    }
+    if (typeof sessionStorage !== "undefined") sessionStorage.setItem(dedupeKey, "1");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("q");
+    window.history.replaceState(null, "", url.toString());
+    chat.sendMessage({ text: q });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   // Poll for awaiting response (when navigating to a session that's still generating)
   useEffect(() => {
@@ -136,9 +171,35 @@ export default function Chat({
     [attachments, addAttachment, removeAttachment, clearAttachments, clearAttachmentsUI],
   );
 
+  // Override sendMessage to inject FileUIPart entries when attachments exist.
+  // This makes files visible in message history (thread.tsx UserAttachmentChip).
+  // The actual file_ids are still sent to the backend via requestAttachments in the transport.
+  const sendMessage = useCallback(
+    async (opts: { text: string }) => {
+      const pending = requestAttachmentsRef.current;
+      if (pending.length === 0) {
+        return chat.sendMessage(opts);
+      }
+      const files: FileUIPart[] = pending.map((att) => ({
+        type: "file" as const,
+        mediaType: att.content_type === "image" ? "image/jpeg" : "application/octet-stream",
+        filename: att.filename,
+        url: `/api/files/${att.file_id}/content`,
+      }));
+      return chat.sendMessage({ text: opts.text, files });
+    },
+    [chat],
+  );
+
   const chatContextValue = useMemo<ChatContextValue>(
-    () => ({ ...chat, employeeName, sessionTitle }),
-    [chat, employeeName, sessionTitle],
+    () => ({
+      ...chat,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sendMessage: sendMessage as any,
+      employeeName,
+      sessionTitle,
+    }),
+    [chat, sendMessage, employeeName, sessionTitle],
   );
 
   return (

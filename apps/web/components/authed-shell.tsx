@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { EmployeePanelProvider } from "@/lib/employee-panel-context";
 import { EmployeeRefreshProvider } from "@/lib/employee-refresh-context";
-import { SessionRefreshProvider } from "@/lib/session-refresh-context";
 import { ToastProvider } from "@/lib/toast-context";
 import {
   CommandPaletteContext,
@@ -18,12 +17,17 @@ import { EmployeeRail } from "@/components/employee-rail";
 import { EmployeeHeader } from "@/components/employee-header";
 import { HistoryPanel } from "@/components/history-panel";
 import { InfoPanel } from "@/components/info-panel";
-import type { AgentEmployeeResponse, SessionResponse } from "@votrix/shared";
+import { EmployeeHome } from "@/components/employee-home";
+import { ShellDataProvider } from "@/lib/shell-data-context";
+import type {
+  AgentEmployeeResponse,
+  SessionDetailResponse,
+  SessionResponse,
+} from "@votrix/shared";
 import type { RightPanelType } from "@/components/employee-header";
 
 export function AuthedShell({
   email,
-  userId,
   children,
 }: {
   email: string;
@@ -35,86 +39,90 @@ export function AuthedShell({
   const router = useRouter();
   const activeSessionId = params?.sessionId;
 
-  const [sessions, setSessions] = useState<SessionResponse[]>([]);
   const [employees, setEmployees] = useState<AgentEmployeeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [activeBlueprintId, setActiveBlueprintId] = useState<string | null>(null);
+  const [activeSessionTitle, setActiveSessionTitle] = useState<string | null>(null);
   const [rightPanel, setRightPanel] = useState<RightPanelType>(null);
 
   const cmdPalette = useCommandPaletteState();
-
   const isMarketplace = pathname === "/marketplace";
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/sessions").then((r) => (r.ok ? r.json() : [])),
-      fetch("/api/employees").then((r) => (r.ok ? r.json() : [])),
-    ])
-      .then(([sess, emps]) => {
-        setSessions(sess);
-        setEmployees(emps);
-      })
+    fetch("/api/employees")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((emps: AgentEmployeeResponse[]) => setEmployees(emps))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  // Initial employee selection
+  // Initial employee selection — runs once after employees load
   const hasAutoSelected = useRef(false);
   useEffect(() => {
     if (employees.length === 0 || hasAutoSelected.current) return;
     hasAutoSelected.current = true;
 
+    const selectDefault = () => {
+      const sorted = [...employees].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+      setSelectedEmployeeId(sorted[0]?.id ?? null);
+    };
+
     if (activeSessionId) {
-      const session = sessions.find((s) => s.id === activeSessionId);
-      if (session?.agent_blueprint_id) {
-        const emp = employees.find(
-          (e) => e.agent_blueprint_id === session.agent_blueprint_id,
-        );
-        if (emp) { setSelectedEmployeeId(emp.id); return; }
-      }
+      fetch(`/api/sessions/${activeSessionId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((session: SessionDetailResponse | null) => {
+          if (session?.agent_blueprint_id) {
+            setActiveBlueprintId(session.agent_blueprint_id);
+            setActiveSessionTitle(session.title ?? null);
+            const emp = employees.find(
+              (e) => e.agent_blueprint_id === session.agent_blueprint_id,
+            );
+            if (emp) { setSelectedEmployeeId(emp.id); return; }
+          }
+          selectDefault();
+        })
+        .catch(selectDefault);
+      return;
     }
 
-    const sorted = [...employees].sort((a, b) => {
-      const aLatest = sessions
-        .filter((s) => s.agent_blueprint_id === a.agent_blueprint_id)
-        .sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())[0];
-      const bLatest = sessions
-        .filter((s) => s.agent_blueprint_id === b.agent_blueprint_id)
-        .sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())[0];
-      const aTime = aLatest ? new Date(aLatest.created_at).getTime() : new Date(a.created_at).getTime();
-      const bTime = bLatest ? new Date(bLatest.created_at).getTime() : new Date(b.created_at).getTime();
-      return bTime - aTime;
-    });
-    setSelectedEmployeeId(sorted[0]?.id ?? null);
-  }, [employees, sessions, activeSessionId]);
+    selectDefault();
+  }, [employees, activeSessionId]);
 
   // Sync employee selection when URL changes to a different session
   const prevSessionId = useRef(activeSessionId);
   useEffect(() => {
     if (activeSessionId === prevSessionId.current) return;
     prevSessionId.current = activeSessionId;
-    if (!activeSessionId || employees.length === 0) return;
 
-    const session = sessions.find((s) => s.id === activeSessionId);
-    if (session?.agent_blueprint_id) {
-      const emp = employees.find(
-        (e) => e.agent_blueprint_id === session.agent_blueprint_id,
-      );
-      if (emp) setSelectedEmployeeId(emp.id);
+    if (!activeSessionId) {
+      setActiveBlueprintId(null);
+      setActiveSessionTitle(null);
+      return;
     }
-  }, [activeSessionId, employees, sessions]);
+    if (employees.length === 0) return;
+
+    fetch(`/api/sessions/${activeSessionId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((session: SessionDetailResponse | null) => {
+        if (session?.agent_blueprint_id) {
+          setActiveBlueprintId(session.agent_blueprint_id);
+          setActiveSessionTitle(session.title ?? null);
+          const emp = employees.find(
+            (e) => e.agent_blueprint_id === session.agent_blueprint_id,
+          );
+          if (emp) setSelectedEmployeeId(emp.id);
+        }
+      })
+      .catch(() => {});
+  }, [activeSessionId, employees]);
 
   const selectedEmployee = useMemo(
     () => employees.find((e) => e.id === selectedEmployeeId) ?? null,
     [employees, selectedEmployeeId],
   );
-
-  const refreshSessions = useCallback(async () => {
-    try {
-      const res = await fetch("/api/sessions");
-      if (res.ok) setSessions(await res.json());
-    } catch {}
-  }, []);
 
   const refreshEmployees = useCallback(async (selectedBlueprintId?: string) => {
     try {
@@ -137,46 +145,75 @@ export function AuthedShell({
     } catch {}
   }, []);
 
-  const handleSelectEmployee = useCallback((id: string) => {
-    setSelectedEmployeeId(id);
-    if (pathname === "/") {
-      const emp = employees.find((e) => e.id === id);
-      if (!emp) return;
-      fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_slug: emp.slug }),
-      }).then(async (res) => {
-        if (!res.ok) return;
-        const data = await res.json();
-        router.push(`/c/${data.id}`);
-        refreshSessions();
-      }).catch(() => {});
-    }
-  }, [employees, pathname, refreshSessions, router]);
+  const handleSelectEmployee = useCallback(
+    (id: string) => {
+      if (id === selectedEmployeeId) return;
 
-  const sessionRefreshValue = useMemo(() => ({ refreshSessions }), [refreshSessions]);
+      const nextEmployee = employees.find((e) => e.id === id);
+      setSelectedEmployeeId(id);
+
+      if (!nextEmployee || !pathname.startsWith("/chat/")) return;
+
+      const sessionIdInUrl = activeSessionId;
+      void (async () => {
+        if (sessionIdInUrl) {
+          try {
+            const r = await fetch(`/api/sessions/${sessionIdInUrl}`);
+            if (r.ok) {
+              const session = (await r.json()) as SessionDetailResponse;
+              if (session.agent_blueprint_id === nextEmployee.agent_blueprint_id) {
+                return;
+              }
+            }
+          } catch {
+            /* fall through to navigate */
+          }
+        }
+
+        try {
+          const listRes = await fetch("/api/sessions");
+          if (!listRes.ok) {
+            router.push("/");
+            return;
+          }
+          const all = (await listRes.json()) as SessionResponse[];
+          const forAgent = all
+            .filter((s) => s.agent_blueprint_id === nextEmployee.agent_blueprint_id)
+            .sort(
+              (a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+            );
+          const latest = forAgent[0];
+          if (latest) router.push(`/chat/${latest.id}`);
+          else router.push("/");
+        } catch {
+          router.push("/");
+        }
+      })();
+    },
+    [activeSessionId, employees, pathname, router, selectedEmployeeId],
+  );
+
   const employeeRefreshValue = useMemo(() => ({ refreshEmployees }), [refreshEmployees]);
-
-  const activeSessionTitle = activeSessionId
-    ? (sessions.find((s) => s.id === activeSessionId)?.title ?? null)
-    : null;
 
   const showHeader = !isMarketplace && selectedEmployee !== null;
   const showHistoryPanel = rightPanel === "history" && selectedEmployee !== null;
   const showInfoPanel = rightPanel === "info" && selectedEmployee !== null;
 
+  const shellData = useMemo(
+    () => ({ employees, activeBlueprintId }),
+    [employees, activeBlueprintId],
+  );
+
   return (
     <ToastProvider>
       <CommandPaletteContext.Provider value={cmdPalette}>
-        <SessionRefreshProvider value={sessionRefreshValue}>
-          <EmployeeRefreshProvider value={employeeRefreshValue}>
+        <EmployeeRefreshProvider value={employeeRefreshValue}>
+          <ShellDataProvider value={shellData}>
             <EmployeePanelProvider>
               <div className="flex h-dvh overflow-hidden">
-                {/* Dark icon rail */}
                 <IconRail email={email} />
 
-                {/* Context-sensitive sidebar */}
                 <EmployeeRail
                   email={email}
                   employees={employees}
@@ -185,9 +222,7 @@ export function AuthedShell({
                   loading={loading}
                 />
 
-                {/* Main column */}
                 <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                  {/* Employee header (workspace only) */}
                   {showHeader && (
                     <EmployeeHeader
                       employee={selectedEmployee}
@@ -197,20 +232,21 @@ export function AuthedShell({
                     />
                   )}
 
-                  {/* Page content + optional right panel */}
                   <div className="flex min-h-0 flex-1 overflow-hidden">
-                    {/* Main — clicking here closes any open right panel */}
                     <div
                       className="flex-1 overflow-hidden"
                       onClick={rightPanel ? () => setRightPanel(null) : undefined}
                     >
-                      {children}
+                      {pathname === "/" ? (
+                        <EmployeeHome employee={selectedEmployee} />
+                      ) : (
+                        children
+                      )}
                     </div>
 
                     {showHistoryPanel && (
                       <HistoryPanel
                         employee={selectedEmployee}
-                        sessions={sessions}
                         onClose={() => setRightPanel(null)}
                       />
                     )}
@@ -218,19 +254,18 @@ export function AuthedShell({
                     {showInfoPanel && (
                       <InfoPanel
                         employee={selectedEmployee}
-                        sessions={sessions}
                         onClose={() => setRightPanel(null)}
                       />
                     )}
                   </div>
                 </div>
 
-                <EmployeeDetailPanel sessions={sessions} />
+                <EmployeeDetailPanel />
               </div>
             </EmployeePanelProvider>
-          </EmployeeRefreshProvider>
-        </SessionRefreshProvider>
-        <CommandPalette employees={employees} sessions={sessions} />
+          </ShellDataProvider>
+        </EmployeeRefreshProvider>
+        <CommandPalette />
         <Toaster />
       </CommandPaletteContext.Provider>
     </ToastProvider>

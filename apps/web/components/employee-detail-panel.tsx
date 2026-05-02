@@ -5,21 +5,16 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Bot, Loader2, Trash2 } from "lucide-react";
 import { useEmployeePanel } from "@/lib/employee-panel-context";
 import { useEmployeeRefresh } from "@/lib/employee-refresh-context";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
+import { useShellData } from "@/lib/shell-data-context";
 import { useToast } from "@/lib/toast-context";
-import type { SessionResponse } from "@votrix/shared";
 
-export function EmployeeDetailPanel({
-  sessions,
-}: {
-  sessions: SessionResponse[];
-}) {
+export function EmployeeDetailPanel() {
   const router = useRouter();
   const params = useParams<{ sessionId?: string }>();
   const activeSessionId = params?.sessionId;
   const { selectedEmployee, closePanel } = useEmployeePanel();
   const { refreshEmployees } = useEmployeeRefresh();
-  const { refreshSessions } = useSessionRefresh();
+  const { activeBlueprintId } = useShellData();
   const { toast } = useToast();
   const [removing, startRemoving] = useTransition();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -27,11 +22,8 @@ export function EmployeeDetailPanel({
   const handleRemove = () => {
     if (!selectedEmployee) return;
     const removedEmployee = selectedEmployee;
-    const activeSession = activeSessionId
-      ? sessions.find((s) => s.id === activeSessionId)
-      : null;
     const shouldReset =
-      activeSession?.agent_blueprint_id === removedEmployee.agent_blueprint_id;
+      !!activeSessionId && activeBlueprintId === removedEmployee.agent_blueprint_id;
 
     startRemoving(async () => {
       try {
@@ -45,7 +37,7 @@ export function EmployeeDetailPanel({
         }
         setShowConfirm(false);
         closePanel();
-        await Promise.all([refreshEmployees(), refreshSessions()]);
+        await refreshEmployees();
         if (shouldReset) router.push("/");
         else router.refresh();
       } catch {

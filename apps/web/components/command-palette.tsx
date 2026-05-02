@@ -6,13 +6,11 @@ import {
   Bot,
   FileText,
   MessageSquare,
-  Plus,
   Search,
   Store,
 } from "lucide-react";
 import { useCommandPalette } from "@/lib/use-command-palette";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
-import type { AgentEmployeeResponse, SessionResponse } from "@votrix/shared";
+import type { SessionResponse } from "@votrix/shared";
 
 interface CommandItem {
   id: string;
@@ -23,25 +21,23 @@ interface CommandItem {
   action: () => void;
 }
 
-export function CommandPalette({
-  employees,
-  sessions,
-}: {
-  employees: AgentEmployeeResponse[];
-  sessions: SessionResponse[];
-}) {
+export function CommandPalette() {
   const router = useRouter();
   const { isOpen, close } = useCommandPalette();
-  const { refreshSessions } = useSessionRefresh();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setQuery("");
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 10);
+      fetch("/api/sessions")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((all: SessionResponse[]) => setSessions(all))
+        .catch(() => {});
     }
   }, [isOpen]);
 
@@ -72,30 +68,6 @@ export function CommandPalette({
       },
     );
 
-    for (const emp of employees) {
-      results.push({
-        id: `new-chat-${emp.slug}`,
-        label: `New chat with ${emp.display_name}`,
-        icon: <Plus className="size-4" />,
-        group: "Actions",
-        action: () => {
-          close();
-          fetch("/api/sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ agent_slug: emp.slug }),
-          })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((data) => {
-              if (data) {
-                router.push(`/c/${data.id}`);
-                refreshSessions();
-              }
-            });
-        },
-      });
-    }
-
     for (const s of sessions.slice(0, 20)) {
       const label = s.title || s.blueprint_display_name || `Chat ${s.id.slice(0, 8)}`;
       results.push({
@@ -104,12 +76,12 @@ export function CommandPalette({
         description: s.blueprint_display_name ?? undefined,
         icon: <Bot className="size-4" />,
         group: "Recent Chats",
-        action: () => { close(); router.push(`/c/${s.id}`); },
+        action: () => { close(); router.push(`/chat/${s.id}`); },
       });
     }
 
     return results;
-  }, [employees, sessions, close, router]);
+  }, [sessions, close, router]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
