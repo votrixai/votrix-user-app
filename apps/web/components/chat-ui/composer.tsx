@@ -86,6 +86,7 @@ export const Composer: FC = () => {
   const composingRef = useRef(false);
   const [input, setInput] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const isRunning = status === "submitted" || status === "streaming";
 
@@ -111,11 +112,7 @@ export const Composer: FC = () => {
     [],
   );
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-
+  const uploadFile = async (file: File) => {
     setUploading(true);
     try {
       const form = new FormData();
@@ -138,9 +135,40 @@ export const Composer: FC = () => {
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    await uploadFile(file);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragging(false);
+    }
+  };
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="relative flex w-full flex-col">
-      <div className="flex w-full flex-col rounded-lg border border-border bg-background shadow-[0_3px_10px_-4px_rgba(0,0,0,0.08),0_4px_6px_-2px_rgba(0,0,0,0.05)] transition-all duration-200 ease-out focus-within:border-primary focus-within:shadow-[0_0_0_2px_rgba(0,0,0,0.08)] dark:shadow-[0_3px_10px_-4px_rgba(0,0,0,0.2),0_4px_6px_-2px_rgba(0,0,0,0.1)]">
+      <div
+        className={`flex w-full flex-col rounded-lg border bg-background shadow-[0_3px_10px_-4px_rgba(0,0,0,0.08),0_4px_6px_-2px_rgba(0,0,0,0.05)] transition-all duration-200 ease-out focus-within:border-primary focus-within:shadow-[0_0_0_2px_rgba(0,0,0,0.08)] dark:shadow-[0_3px_10px_-4px_rgba(0,0,0,0.2),0_4px_6px_-2px_rgba(0,0,0,0.1)] ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
         {/* Textarea zone */}
         <div className="px-3 pt-2 pb-2">
           {attachments.length > 0 && (

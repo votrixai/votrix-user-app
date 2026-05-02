@@ -1,13 +1,7 @@
-import { backendFetch } from "@/lib/backend";
-import type { AgentEmployeeResponse } from "@votrix/shared";
 import NewChatLanding from "@/components/new-chat-landing";
 
-export default async function Home() {
-  let employees: AgentEmployeeResponse[] = [];
-  try {
-    const res = await backendFetch("/employees");
-    if (res.ok) employees = (await res.json()) as AgentEmployeeResponse[];
-  } catch {}
-
-  return <NewChatLanding employees={employees} />;
+// This page is rendered server-side but only displayed when AuthedShell
+// has no employees to show (AuthedShell overrides children on "/" with EmployeeHome).
+export default function Home() {
+  return <NewChatLanding employees={[]} />;
 }

@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useTransition } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Loader2,
   PanelLeftClose,
   Plus,
   Trash2,
 } from "lucide-react";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
 import { useToast } from "@/lib/toast-context";
 import type { AgentEmployeeResponse, SessionResponse } from "@votrix/shared";
 
@@ -28,8 +26,6 @@ export function SessionPanel({
   const params = useParams<{ sessionId?: string }>();
   const activeId = params?.sessionId;
   const { toast } = useToast();
-  const { refreshSessions } = useSessionRefresh();
-  const [creating, startCreating] = useTransition();
 
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; title: string } | null>(null);
@@ -98,26 +94,8 @@ export function SessionPanel({
   };
 
   const startNewChat = useCallback(() => {
-    if (!employee) return;
-    startCreating(async () => {
-      try {
-        const res = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_slug: employee.slug }),
-        });
-        if (!res.ok) {
-          toast("Could not create chat. Please try again.");
-          return;
-        }
-        const data = await res.json();
-        router.push(`/c/${data.id}`);
-        refreshSessions();
-      } catch {
-        toast("Could not create chat. Check your connection.");
-      }
-    });
-  }, [employee, refreshSessions, router, toast]);
+    router.push("/");
+  }, [router]);
 
   if (!employee) {
     return (
@@ -139,18 +117,11 @@ export function SessionPanel({
         <div className="flex items-center gap-1.5">
           <button
             onClick={startNewChat}
-            disabled={creating}
-            className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             aria-label="New chat"
           >
-            {creating ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <>
-                <Plus className="size-3.5" />
-                New Chat
-              </>
-            )}
+            <Plus className="size-3.5" />
+            New Chat
           </button>
           <button
             onClick={onCollapse}
@@ -194,7 +165,7 @@ export function SessionPanel({
                     <Loader2 className="size-3 shrink-0 animate-spin" />
                   )}
                   <Link
-                    href={`/c/${s.id}`}
+                    href={`/chat/${s.id}`}
                     className="min-w-0 flex-1 truncate"
                     title={labelFor(s)}
                   >

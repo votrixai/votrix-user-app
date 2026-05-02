@@ -1,10 +1,7 @@
 "use client";
 
-import { Clock, Info, Loader2, Plus } from "lucide-react";
-import { useTransition } from "react";
+import { Clock, Info, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
-import { useToast } from "@/lib/toast-context";
 import type { AgentEmployeeResponse } from "@votrix/shared";
 import { cn } from "@/lib/utils";
 
@@ -37,33 +34,11 @@ export function EmployeeHeader({
   onSetRightPanel: (type: RightPanelType) => void;
 }) {
   const router = useRouter();
-  const { toast } = useToast();
-  const { refreshSessions } = useSessionRefresh();
-  const [creating, startCreating] = useTransition();
 
   const initials = employee.display_name.slice(0, 2).toUpperCase();
   const { bg, text } = getBadgeColor(employee.display_name);
 
-  const handleNewSession = () => {
-    startCreating(async () => {
-      try {
-        const res = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_slug: employee.slug }),
-        });
-        if (!res.ok) {
-          toast("Could not create session. Please try again.");
-          return;
-        }
-        const data = await res.json();
-        refreshSessions();
-        router.push(`/c/${data.id}`);
-      } catch {
-        toast("Could not create session. Check your connection.");
-      }
-    });
-  };
+  const handleNewSession = () => router.push("/");
 
   const toggle = (type: "history" | "info") =>
     onSetRightPanel(rightPanel === type ? null : type);
@@ -101,14 +76,9 @@ export function EmployeeHeader({
       <div className="flex shrink-0 items-center gap-1.5">
         <button
           onClick={handleNewSession}
-          disabled={creating}
-          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
         >
-          {creating ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Plus className="size-3.5" />
-          )}
+          <Plus className="size-3.5" />
           New session
         </button>
 
