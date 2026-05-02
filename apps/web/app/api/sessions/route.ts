@@ -1,4 +1,4 @@
-import { backendFetch } from "@/lib/backend";
+import { backendFetch, getDefaultWorkspaceId } from "@/lib/backend";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -24,9 +24,26 @@ export async function POST(request: Request) {
   if (!user) return new Response("Unauthorized", { status: 401 });
 
   const body = await request.json();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const workspaceId = await getDefaultWorkspaceId(session.access_token);
+  if (!workspaceId) {
+    return new Response(
+      JSON.stringify({ detail: "No workspace found for user" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   const res = await backendFetch("/sessions", {
     method: "POST",
-    body: JSON.stringify({ agent_slug: body.agent_slug }),
+    body: JSON.stringify({
+      agent_slug: body.agent_slug,
+      workspace_id: workspaceId,
+    }),
   });
   const text = await res.text();
   if (!res.ok) {

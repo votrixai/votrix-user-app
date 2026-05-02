@@ -23,7 +23,7 @@ function requiresWorkspaceHeader(path: string) {
   );
 }
 
-async function getDefaultWorkspaceId(accessToken: string) {
+export async function getDefaultWorkspaceId(accessToken: string) {
   const res = await fetch(`${BACKEND_URL}/users/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",

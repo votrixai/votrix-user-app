@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { EmployeePanelProvider } from "@/lib/employee-panel-context";
 import { EmployeeRefreshProvider } from "@/lib/employee-refresh-context";
 import { SessionRefreshProvider } from "@/lib/session-refresh-context";
@@ -10,15 +10,16 @@ import {
   CommandPaletteContext,
   useCommandPaletteState,
 } from "@/lib/use-command-palette";
-import { PanelLeftOpen } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { CommandPalette } from "@/components/command-palette";
 import { EmployeeDetailPanel } from "@/components/employee-detail-panel";
+import { IconRail } from "@/components/icon-rail";
 import { EmployeeRail } from "@/components/employee-rail";
-import { SessionPanel } from "@/components/session-panel";
+import { EmployeeHeader } from "@/components/employee-header";
+import { HistoryPanel } from "@/components/history-panel";
+import { InfoPanel } from "@/components/info-panel";
 import type { AgentEmployeeResponse, SessionResponse } from "@votrix/shared";
-
-const PANEL_COLLAPSED_KEY = "votrix-session-panel";
+import type { RightPanelType } from "@/components/employee-header";
 
 export function AuthedShell({
   email,
@@ -30,21 +31,21 @@ export function AuthedShell({
   children: React.ReactNode;
 }) {
   const params = useParams<{ sessionId?: string }>();
+  const pathname = usePathname();
+  const router = useRouter();
   const activeSessionId = params?.sessionId;
 
   const [sessions, setSessions] = useState<SessionResponse[]>([]);
   const [employees, setEmployees] = useState<AgentEmployeeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [rightPanel, setRightPanel] = useState<RightPanelType>(null);
 
   const cmdPalette = useCommandPaletteState();
 
-  useEffect(() => {
-    try {
-      setPanelCollapsed(localStorage.getItem(PANEL_COLLAPSED_KEY) === "true");
-    } catch {}
+  const isMarketplace = pathname === "/marketplace";
 
+  useEffect(() => {
     Promise.all([
       fetch("/api/sessions").then((r) => (r.ok ? r.json() : [])),
       fetch("/api/employees").then((r) => (r.ok ? r.json() : [])),
@@ -57,7 +58,7 @@ export function AuthedShell({
       .finally(() => setLoading(false));
   }, []);
 
-  // Initial employee selection — runs once when data loads
+  // Initial employee selection
   const hasAutoSelected = useRef(false);
   useEffect(() => {
     if (employees.length === 0 || hasAutoSelected.current) return;
@@ -69,10 +70,7 @@ export function AuthedShell({
         const emp = employees.find(
           (e) => e.agent_blueprint_id === session.agent_blueprint_id,
         );
-        if (emp) {
-          setSelectedEmployeeId(emp.id);
-          return;
-        }
+        if (emp) { setSelectedEmployeeId(emp.id); return; }
       }
     }
 
@@ -122,7 +120,6 @@ export function AuthedShell({
     try {
       const res = await fetch("/api/employees");
       if (!res.ok) return;
-
       const nextEmployees = (await res.json()) as AgentEmployeeResponse[];
       setEmployees(nextEmployees);
 
@@ -140,24 +137,34 @@ export function AuthedShell({
     } catch {}
   }, []);
 
-  const sessionRefreshValue = useMemo(
-    () => ({ refreshSessions }),
-    [refreshSessions],
-  );
-  const employeeRefreshValue = useMemo(
-    () => ({ refreshEmployees }),
-    [refreshEmployees],
-  );
+  const handleSelectEmployee = useCallback((id: string) => {
+    setSelectedEmployeeId(id);
+    if (pathname === "/") {
+      const emp = employees.find((e) => e.id === id);
+      if (!emp) return;
+      fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_slug: emp.slug }),
+      }).then(async (res) => {
+        if (!res.ok) return;
+        const data = await res.json();
+        router.push(`/c/${data.id}`);
+        refreshSessions();
+      }).catch(() => {});
+    }
+  }, [employees, pathname, refreshSessions, router]);
 
-  const togglePanelCollapsed = useCallback(() => {
-    setPanelCollapsed((prev) => {
-      const next = !prev;
-      try { localStorage.setItem(PANEL_COLLAPSED_KEY, String(next)); } catch {}
-      return next;
-    });
-  }, []);
+  const sessionRefreshValue = useMemo(() => ({ refreshSessions }), [refreshSessions]);
+  const employeeRefreshValue = useMemo(() => ({ refreshEmployees }), [refreshEmployees]);
 
-  const showSessionPanel = employees.length > 0 && !panelCollapsed;
+  const activeSessionTitle = activeSessionId
+    ? (sessions.find((s) => s.id === activeSessionId)?.title ?? null)
+    : null;
+
+  const showHeader = !isMarketplace && selectedEmployee !== null;
+  const showHistoryPanel = rightPanel === "history" && selectedEmployee !== null;
+  const showInfoPanel = rightPanel === "info" && selectedEmployee !== null;
 
   return (
     <ToastProvider>
@@ -166,38 +173,57 @@ export function AuthedShell({
           <EmployeeRefreshProvider value={employeeRefreshValue}>
             <EmployeePanelProvider>
               <div className="flex h-dvh overflow-hidden">
-                {/* Employee rail */}
+                {/* Dark icon rail */}
+                <IconRail email={email} />
+
+                {/* Context-sensitive sidebar */}
                 <EmployeeRail
                   email={email}
                   employees={employees}
                   selectedEmployeeId={selectedEmployeeId}
-                  onSelectEmployee={setSelectedEmployeeId}
+                  onSelectEmployee={handleSelectEmployee}
                   loading={loading}
                 />
 
-                {/* Session panel */}
-                {showSessionPanel && (
-                  <SessionPanel
-                    employee={selectedEmployee}
-                    sessions={sessions}
-                    onSessionsChange={setSessions}
-                    onCollapse={togglePanelCollapsed}
-                  />
-                )}
+                {/* Main column */}
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                  {/* Employee header (workspace only) */}
+                  {showHeader && (
+                    <EmployeeHeader
+                      employee={selectedEmployee}
+                      sessionTitle={activeSessionTitle}
+                      rightPanel={rightPanel}
+                      onSetRightPanel={setRightPanel}
+                    />
+                  )}
 
-                {/* Expand session panel toggle */}
-                {employees.length > 0 && panelCollapsed && (
-                  <button
-                    onClick={togglePanelCollapsed}
-                    className="flex h-full w-6 shrink-0 items-center justify-center border-r border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label="Expand session panel"
-                  >
-                    <PanelLeftOpen className="size-3.5" />
-                  </button>
-                )}
+                  {/* Page content + optional right panel */}
+                  <div className="flex min-h-0 flex-1 overflow-hidden">
+                    {/* Main — clicking here closes any open right panel */}
+                    <div
+                      className="flex-1 overflow-hidden"
+                      onClick={rightPanel ? () => setRightPanel(null) : undefined}
+                    >
+                      {children}
+                    </div>
 
-                {/* Main content */}
-                <div className="flex-1 overflow-hidden">{children}</div>
+                    {showHistoryPanel && (
+                      <HistoryPanel
+                        employee={selectedEmployee}
+                        sessions={sessions}
+                        onClose={() => setRightPanel(null)}
+                      />
+                    )}
+
+                    {showInfoPanel && (
+                      <InfoPanel
+                        employee={selectedEmployee}
+                        sessions={sessions}
+                        onClose={() => setRightPanel(null)}
+                      />
+                    )}
+                  </div>
+                </div>
 
                 <EmployeeDetailPanel sessions={sessions} />
               </div>

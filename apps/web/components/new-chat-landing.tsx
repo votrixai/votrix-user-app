@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bot, Loader2, Store } from "lucide-react";
-import { useSessionRefresh } from "@/lib/session-refresh-context";
-import { useToast } from "@/lib/toast-context";
+import { Bot, Store } from "lucide-react";
 import type { AgentEmployeeResponse } from "@votrix/shared";
 
 export default function NewChatLanding({
@@ -13,36 +9,6 @@ export default function NewChatLanding({
 }: {
   employees: AgentEmployeeResponse[];
 }) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { refreshSessions } = useSessionRefresh();
-  const [creating, startCreating] = useTransition();
-  const [selected, setSelected] = useState<string | null>(null);
-
-  const start = (employee: AgentEmployeeResponse) => {
-    setSelected(employee.slug);
-    startCreating(async () => {
-      try {
-        const res = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_slug: employee.slug }),
-        });
-        if (!res.ok) {
-          toast("Could not start chat. Please try again.");
-          setSelected(null);
-          return;
-        }
-        const data = await res.json();
-        router.push(`/c/${data.id}`);
-        refreshSessions();
-      } catch {
-        toast("Could not start chat. Check your connection.");
-        setSelected(null);
-      }
-    });
-  };
-
   if (employees.length === 0) {
     return (
       <main className="flex h-full items-center justify-center p-6">
@@ -80,37 +46,9 @@ export default function NewChatLanding({
 
   return (
     <main className="flex h-full items-center justify-center p-6">
-      <div className="w-full max-w-xl">
-        <h1 className="mb-2 text-center text-2xl font-light tracking-tight">
-          Start a new chat
-        </h1>
-        <p className="mb-8 text-center text-sm text-muted-foreground">
-          Choose an employee to begin.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {employees.map((emp, i) => (
-            <button
-              key={emp.id}
-              onClick={() => start(emp)}
-              disabled={creating}
-              className="animate-stagger-in flex items-start gap-3 rounded-md border border-border bg-background p-4 text-left shadow-ambient transition-colors hover:shadow-standard disabled:opacity-50"
-              style={{ "--stagger-index": i } as React.CSSProperties}
-            >
-              <div className="mt-0.5 flex size-8 items-center justify-center rounded-md bg-muted">
-                <Bot className="size-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-light text-foreground">{emp.display_name}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {selected === emp.slug && creating
-                    ? "Creating..."
-                    : emp.model}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Select an employee from the left to start chatting.
+      </p>
     </main>
   );
 }

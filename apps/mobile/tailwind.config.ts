@@ -7,30 +7,30 @@ export default {
     extend: {
       colors: {
         background: "#ffffff",
-        foreground: "#061b31",
+        foreground: "#0a0a0a",
         muted: {
-          DEFAULT: "#f6f9fc",
-          foreground: "#64748d",
+          DEFAULT: "#f5f5f5",
+          foreground: "#737373",
         },
         primary: {
-          DEFAULT: "#533afd",
-          foreground: "#ffffff",
+          DEFAULT: "#171717",
+          foreground: "#fafafa",
         },
         secondary: {
-          DEFAULT: "#f6f9fc",
-          foreground: "#061b31",
+          DEFAULT: "#f5f5f5",
+          foreground: "#0a0a0a",
         },
         accent: {
-          DEFAULT: "#f6f9fc",
-          foreground: "#061b31",
+          DEFAULT: "#f5f5f5",
+          foreground: "#0a0a0a",
         },
         destructive: {
-          DEFAULT: "#ea2261",
-          foreground: "#ffffff",
+          DEFAULT: "#dc2626",
+          foreground: "#fafafa",
         },
-        border: "#e5edf5",
-        input: "#d4dce8",
-        ring: "#533afd",
+        border: "#e5e5e5",
+        input: "#d4d4d4",
+        ring: "#171717",
       },
       fontWeight: {
         light: "300",
