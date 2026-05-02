@@ -363,6 +363,16 @@ export const handlers = [
     return HttpResponse.json(MOCK_EMPLOYEES);
   }),
 
+  http.post("/api/employees", async ({ request }) => {
+    const body = (await request.json()) as { agent_slug?: string };
+    const employee = MOCK_EMPLOYEES.find((e) => e.slug === body.agent_slug);
+    return HttpResponse.json({
+      employee_id: employee?.id ?? "mock-employee",
+      workspace_id: "ws-1",
+      blueprint_id: employee?.agent_blueprint_id ?? "bp-1",
+    }, { status: 201 });
+  }),
+
   http.get("/api/sessions", () => {
     return HttpResponse.json(dynamicSessions);
   }),

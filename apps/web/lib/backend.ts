@@ -19,8 +19,7 @@ function requiresWorkspaceHeader(path: string) {
     path.startsWith("/sessions/") ||
     path === "/employees" ||
     path.startsWith("/employees/") ||
-    path === "/agents/blueprints" ||
-    (path.startsWith("/agents/") && path.endsWith("/enable"))
+    path === "/agents/blueprints"
   );
 }
 

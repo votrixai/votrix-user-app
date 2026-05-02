@@ -13,21 +13,7 @@ export async function DELETE(
 
   const { employeeId } = await params;
 
-  // We need the agent_slug to call the backend's disable endpoint.
-  // First get the employee info to find the slug.
-  const empRes = await backendFetch("/employees");
-  if (!empRes.ok) {
-    return new Response("Failed to fetch employees", { status: 500 });
-  }
-  const employees = await empRes.json();
-  const employee = employees.find(
-    (e: { id: string }) => e.id === employeeId,
-  );
-  if (!employee) {
-    return new Response("Employee not found", { status: 404 });
-  }
-
-  const res = await backendFetch(`/agents/${employee.slug}/enable`, {
+  const res = await backendFetch(`/employees/${employeeId}`, {
     method: "DELETE",
   });
   return new Response(null, { status: res.status });

@@ -74,8 +74,7 @@ Tracks feature parity between web and mobile. Update this file in the same PR th
 | POST /api/chat | ✅ | ❌ | Mobile hits backend directly |
 | GET/POST /api/sessions | ✅ | ❌ | |
 | GET/DELETE /api/sessions/:id | ✅ | ❌ | |
-| GET /api/employees | ✅ | ❌ | |
-| POST /api/employees/hire | ✅ | ❌ | |
+| GET/POST /api/employees | ✅ | ❌ | |
 | DELETE /api/employees/:id | ✅ | ❌ | |
 | GET /api/employees/:id/memory-stores | ✅ | ❌ | |
 | GET /api/employees/:id/memory-stores/:id/memories | ✅ | ❌ | |

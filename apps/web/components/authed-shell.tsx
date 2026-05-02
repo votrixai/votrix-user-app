@@ -131,7 +131,12 @@ export function AuthedShell({
           (e) => e.agent_blueprint_id === selectedBlueprintId,
         );
         if (hired) setSelectedEmployeeId(hired.id);
+        return;
       }
+      setSelectedEmployeeId((prev) => {
+        if (prev && nextEmployees.some((e) => e.id === prev)) return prev;
+        return nextEmployees[0]?.id ?? null;
+      });
     } catch {}
   }, []);
 
